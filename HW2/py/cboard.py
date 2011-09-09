@@ -9,14 +9,20 @@ class CBoard:
   #otherwise, it is undefined
   def __init__(self,pInit=True):
     self.__mCell = list(range(NSQUARES))
-    if pInit:
+    if isinstance(pInit, list):
       for i in range(NSQUARES):
-        if i<NPLAYERPIECES:
-          self.__mCell[i] = CELL_OWN
-        elif i<NSQUARES-NPLAYERPIECES:
-          self.__mCell[i] = CELL_EMPTY
-        else:
-          self.__mCell[i] = CELL_OTHER
+        self.__mCell[i] = pInit[i]
+    elif isinstance(pInit, bool):
+      if pInit:
+        for i in range(NSQUARES):
+          if i<NPLAYERPIECES:
+            self.__mCell[i] = CELL_OWN
+          elif i<NSQUARES-NPLAYERPIECES:
+            self.__mCell[i] = CELL_EMPTY
+          else:
+            self.__mCell[i] = CELL_OTHER
+    else:
+      raise TypeError("CBoard expects either a bool or a list of cells")
 
   #returns the contents of the cell pPos (where pPos is a number from 0 to 31)
   
