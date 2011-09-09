@@ -34,8 +34,8 @@ class CPlayer:
   # you must return a CMove containing your move.
   def play(self,pBoard,pDue):
     #use the commented version if your system supports ANSI colors (linux does)
-    #pBoard.print_out() 
-    pBoard.print_nocolor()
+    pBoard.print_out() 
+    #pBoard.print_nocolor()
     
     #Here you should write your clever algorithms to get the best next move.
     #This skeleton returns instead a random movement from the legal ones.
