@@ -98,15 +98,15 @@ class CBoard:
     # try capturing fw
     if pOther==CELL_OTHER or pKing:
       # try capturing right
-      lFound=lFound or self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,1,-1,pDepth)
+      lFound=self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,1,-1,pDepth) or lFound
       #try capturing left
-      lFound=lFound or self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,1,1,pDepth)
+      lFound=self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,1,1,pDepth) or lFound
     # try capturing bw
     if pOther==CELL_OWN or pKing:
       # try capturing right
-      lFound=lFound or self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,-1,-1,pDepth)
+      lFound=self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,-1,-1,pDepth) or lFound
       #try capturing left
-      lFound=lFound or self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,-1,1,pDepth)
+      lFound=self.__try_jump_dir(pMoves,pOther,pR,pC,pKing,pBuffer,-1,1,pDepth) or lFound
 
     if not lFound and pDepth>0: # XXX check precedence of operators
       pMoves.append(CMove(pDepth,pBuffer))
