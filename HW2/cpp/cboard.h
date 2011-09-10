@@ -49,6 +49,17 @@ public:
         DoMove(pMove);
     }
 
+
+
+    // constructs a board which a given cell vector
+    CBoard(const uint8_t cells[]) {
+    	for(int i = 0; i < cSquares; ++i) {
+    		mCell[i]ее
+    	}
+    }
+
+
+
     ///returns the content of a cell in the board.
 
     ///Cells are numbered as follows:
