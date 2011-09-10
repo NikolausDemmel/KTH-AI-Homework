@@ -211,6 +211,13 @@ class CBoard:
             line += "\033[31;40m()\033[0m"
         else:
           line += "\033[37;40m  \033[0m"
+      # print a second board to right, which includes the cell numbers.
+      line += "    "
+      for c in reversed(range(NCOLS)):
+        if c&1 == r&1:
+          line += "\033[47m  \033[0m"
+        else:
+          line += "\033[37;40m{0:2}\033[0m".format(r*(NROWS//2)+(c>>1))
       print(line)
     print("")
 
