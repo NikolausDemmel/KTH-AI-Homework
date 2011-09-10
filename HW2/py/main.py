@@ -3,6 +3,7 @@ from cplayer import CPlayer
 from csocket import CSocket
 from cboard import CBoard
 from cmove import CMove
+from constants import *
 import time
 
 import sys
@@ -35,6 +36,23 @@ lPlayer.initialize(lFirst,lTime)
 lSocket.write_line("INIT")
 
 lBoard=CBoard()
+
+# lBoard = CBoard([0,0,0,1,
+#                  0,0,0,1,
+#                  0,0,1,1,
+#                  1,1,0,0,
+#                  2,0,1,1,
+#                  0,0,0,0,
+#                  2,2,2,2,
+#                  0,0,0,0])
+
+# lBoard.print_out()
+
+# for m in lBoard.find_possible_moves(CELL_OWN):
+#   print(m.to_string())
+
+# sys.exit(0)
+
 
 while True:
   lBlock=False
