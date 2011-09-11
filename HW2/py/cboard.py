@@ -307,6 +307,9 @@ class CBoard:
     return not moves
 
   def evaluate(self, moves = None):
+    # ACKNOLEDGEMENT: some ideas for evaluation function taken from:
+    # http://www.mec-acm.org/assets/archive/assets/Checkers/Checkers_page.htm
+    
     # ignoring draw for now. Should do something clever in endgame anyway...
     if None == moves:
       moves = self.find_possible_moves()
@@ -317,15 +320,34 @@ class CBoard:
         return 1.0 # we win.
     own = 0
     other = 0
-    for c in self._mCell:
-      if c & CELL_OWN:
-        if c & CELL_KING:
-          own += 2
-        else:
-          own += 1
-      elif c & CELL_OTHER:
-        if c & CELL_KING:
-          other += 2
-        else:
-          other += 1
+    for r in range(NROWS):
+      for c in range(NCOLS):
+        cell = self.at(r,c)
+        if cell & CELL_OWN: 
+          if cell & CELL_KING:
+            own += KING_SCORE
+            if r == 0 or r == 7:
+              own += KING_SIDE
+            if c == 0 or c == 7:
+              own += KING_SIDE
+          else:
+            own += PAWN_SCORE
+            own += PAWN_POS * r * r
+        elif cell & CELL_OTHER:
+          if cell & CELL_KING:
+            other += KING_SCORE
+            if r == 0 or r == 7:
+              other += KING_SIDE
+            if c == 0 or c == 7:
+              other += KING_SIDE
+          else:
+            other += PAWN_SCORE
+            other += PAWN_POS * (7-r) * (7-r)
     return own / (own+other)
+
+PAWN_SCORE=1
+KING_SCORE=2
+KING_SIDE=-0.1
+PAWN_POS=0.01
+
+# add random weight??
