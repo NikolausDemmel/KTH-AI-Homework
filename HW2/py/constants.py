@@ -8,3 +8,8 @@ NSQUARES = 32
 NROWS = 8
 NCOLS = 8
 BUFSIZE = 4096
+
+# infinities
+# used only for comparison with values in range [0.0, 1.0]
+INF = 2.0
+NEGINF = -1.0
