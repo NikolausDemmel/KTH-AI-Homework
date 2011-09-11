@@ -1,6 +1,11 @@
 import random
 import time
 from constants import *
+from itertools import count
+import signal
+
+def signal_handler(signum, frame):
+  raise Exception("Timeout")
 
 class CPlayer:
   # this function is called when waiting for the other player to move
@@ -34,11 +39,23 @@ class CPlayer:
   # you must return a CMove containing your move.
   def play(self,pBoard,pDue):
     pBoard.print_out() 
-    print("value: %f, turn: %s" % (pBoard.evaluate(CELL_OWN),"we" if pBoard.player() == CELL_OWN else "they"))
+    print("value: %f, turn: %s" % (pBoard.evaluate(),"we" if pBoard.player() == CELL_OWN else "they"))
 
-    self.max_depth = 5
-    
+    self.max_depth = 1
     move = self.a_b_search(pBoard)
+
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(int(pDue-time.time()))
+
+    ultimate_max_depth = 100
+
+    try:
+      for self.max_depth in range(2,ultimate_max_depth):
+        move = self.a_b_search(pBoard)
+      signal.alarm(0)
+    except Exception as e:
+      print("Interrupted: " + str(e))
+
     return move
     #return random.choice(pBoard.find_possible_moves(CELL_OWN))
 
@@ -55,15 +72,22 @@ class CPlayer:
     self.number_of_boards = 0
     a = NEGINF
     moves = board.find_possible_moves()
+    if len(moves) == 1:
+      return moves[0]
     v,m = NEGINF, None
     for mcurr in moves:
       vcurr = self.min_value(board.copy_and_move(mcurr), a, INF, 0)
+      print("move %s has value %f" % (mcurr.to_string(),vcurr))
       if vcurr > v:
         v = vcurr
-        m = mcurr
+        m = [mcurr]
+      elif v == vcurr:
+        m.append(mcurr)
       a = max(a,v)
-    print("finished a b search. Number of boards: %d. Best move: '%s', value: %f" % (self.number_of_boards, m.to_string(), v))
-    return m
+    print("finished a b search. Number of boards: %d. Best moves: '%s', value: %f" % (self.number_of_boards, list(map(lambda x: x.to_string(), m)), v))
+    move = random.choice(m)
+    print("choosing move " + move.to_string())
+    return move
   
   def max_value(self, board, a, b, depth):
     moves = board.find_possible_moves()
