@@ -78,6 +78,9 @@ class CMove:
   def is_jump(self):
     return self.__mType > 0
 
+  def number_of_jumps(self):
+    return self.__mType
+
   #returns true if this move is a normal move
   def is_normal(self):
     return self.__mType == MOVE_NORMAL
@@ -93,12 +96,12 @@ class CMove:
     return ' '.join(map(lambda x:str(x),[self.__mType]+self.__mData))
 
   def __eq__(self,pRH):
-    if self.__mType == pRH.__mType:
+    if self.__mType != pRH.__mType:
       return False
     if len(self.__mData)!=len(pRH.__mData):
       return False
 
-    for i in len(self.__mData):
+    for i in range(len(self.__mData)):
       if self.__mData[i] != pRH.__mData[i]:
         return False
 
