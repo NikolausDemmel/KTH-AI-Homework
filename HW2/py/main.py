@@ -23,7 +23,13 @@ else:
 
 lLine=lSocket.read_line(True)
 
+#print("Server: " + lLine)
+
 lTokens=lLine.split()
+
+#print("time:                  %f" % time.time())
+#print("server expects answer: %f" % (int(lTokens[0])/1000000.0) )
+
 
 if lStandalone:
     lTime=time.time()+19.0
@@ -35,15 +41,15 @@ lPlayer.initialize(lFirst,lTime)
 
 lSocket.write_line("INIT")
 
-lBoard=CBoard()
+lBoard=CBoard(True, CELL_OWN if lFirst else CELL_OTHER)
 
-# lBoard = CBoard([0,0,0,1,
-#                  0,0,0,1,
-#                  0,0,1,1,
-#                  1,1,0,0,
-#                  2,0,1,1,
+# lBoard = CBoard([0,0,0,0,
 #                  0,0,0,0,
-#                  2,2,2,2,
+#                  0,0,0,0,
+#                  0,0,0,0,
+#                  0,0,0,0,
+#                  0,0,0,0,
+#                  0,0,0,0,
 #                  0,0,0,0])
 
 # lBoard.print_out()
@@ -63,8 +69,13 @@ while True:
     if not lPlayer.idle(lBoard):
       lBlock=True
 
+#  print("Server: " + lLine)
+
   lTokens=lLine.split(None,1)
   
+#  print("time:                  %f" % time.time())
+#  print("server expects answer: %f" % (int(lTokens[0])/1000000.0) )
+
   if lStandalone:
       lTime=time.time()+9.0
   else:

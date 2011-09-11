@@ -7,22 +7,61 @@ class CBoard:
   #if pInit is true, it will leave the board in a state that represents
   #the initial board position.
   #otherwise, it is undefined
-  def __init__(self,pInit=True):
-    self.__mCell = list(range(NSQUARES))
+  def __init__(self,pInit=True,player=None):
     if isinstance(pInit, list):
+      self._mCell = list(range(NSQUARES))
       for i in range(NSQUARES):
-        self.__mCell[i] = pInit[i]
+        self._mCell[i] = pInit[i]
+      self._player = player or CELL_OWN
+      self._numberOfPieces = self._count_pieces()
+    elif isinstance(pInit, CBoard):
+      self._mCell = pInit._mCell[:]
+      self._player = pInit._player
+      self._numberOfPieces = pInit._numberOfPieces
     elif isinstance(pInit, bool):
+      self._mCell = list(range(NSQUARES))
+      self._player = player or CELL_OWN
       if pInit:
         for i in range(NSQUARES):
           if i<NPLAYERPIECES:
-            self.__mCell[i] = CELL_OWN
+            self._mCell[i] = CELL_OWN
           elif i<NSQUARES-NPLAYERPIECES:
-            self.__mCell[i] = CELL_EMPTY
+            self._mCell[i] = CELL_EMPTY
           else:
-            self.__mCell[i] = CELL_OTHER
+            self._mCell[i] = CELL_OTHER
+        self._numberOfPieces = 24
+      else:
+        self._numberOfPieces = 0
     else:
-      raise TypeError("CBoard expects either a bool or a list of cells")
+      raise TypeError("CBoard expects either a bool, another CBoard or a list of cells")
+  
+  def player(self):
+    "Return the whos turn it is, either CELL_OWN or CELL_OTHER"
+    return self._player
+
+  def state(self):
+    "return tuple that fully captures the boards state. Can be used as keys in dicts."
+    return tuple([self._player] + self._mCell)
+
+  def numberOfPieces(self):
+    return self._numberOfPieces
+
+  def _count_pieces(self):
+    "Count pieces on the board"
+    count = 0
+    for c in self._mCell:
+      if c & CELL_OWN or c & CELL_OTHER:
+        count += 1
+    return count
+
+  def __eq__(self, other):
+    # assume that numberOfPieces is consistent
+    if self._player != other._player:
+      return False
+    for i in range(NSQUARES):
+      if self._mCell[i] != other._mCell[i]:
+        return False
+    return True
 
   #returns the contents of the cell pPos (where pPos is a number from 0 to 31)
   
@@ -53,7 +92,7 @@ class CBoard:
   #
   def atcell(self,pPos):
     assert pPos<NSQUARES
-    return self.__mCell[pPos]
+    return self._mCell[pPos]
 
   #returns the contents of the cell at the pRth row and pCth column
   #both rows and columns are in the range 0-7.
@@ -65,10 +104,10 @@ class CBoard:
       return CELL_INVALID
     if pR&1 == pC&1:
       return CELL_INVALID
-    return self.__mCell[pR*(NROWS//2)+(pC>>1)]
+    return self._mCell[pR*(NROWS//2)+(pC>>1)]
     
   def __setcell(self,pR,pC,pValue):
-    self.__mCell[pR*(NROWS//2)+(pC>>1)]=pValue
+    self._mCell[pR*(NROWS//2)+(pC>>1)]=pValue
 
   #operator version of the above function. Allows lBoard(pR,pC)
   def __call__(self,pR,pC):
@@ -138,16 +177,16 @@ class CBoard:
 
   #returns a list of CMove objects, representing the possible moves
   #from this board position
-  def find_possible_moves(self,pWho):
+  def find_possible_moves(self):
     lMoves=[]
-    assert pWho==CELL_OWN or pWho==CELL_OTHER
-    lOther = pWho^(CELL_OWN|CELL_OTHER)
+    # assert pWho==CELL_OWN or pWho==CELL_OTHER
+    lOther = self._player^(CELL_OWN|CELL_OTHER)
     lFound = False
     lPieces = []
     lMoveBuffer = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
 
     for i in range(NSQUARES):
-      if self.atcell(i) & pWho:
+      if self.atcell(i) & self._player:
         lIsKing = self.atcell(i) & CELL_KING
         if self.__try_jump(lMoves,lOther,self.cell2row(i),self.cell2col(i),lIsKing,lMoveBuffer):
           lFound = True
@@ -161,9 +200,18 @@ class CBoard:
     
     return lMoves
 
+  def _invert_player(self):
+    if self._player == CELL_OWN:
+      self._player = CELL_OTHER
+    else:
+      self._player = CELL_OWN
+
   #transforms this board positions bt making the move pMove
   def do_move(self,pMove):
     if pMove.is_jump():
+      self._invert_player()
+      self._numberOfPieces -= pMove.number_of_jumps()
+
       lSR = self.cell2row(pMove[0])
       lSC = self.cell2col(pMove[0])
 
@@ -171,26 +219,34 @@ class CBoard:
         lDR = self.cell2row(pMove[i])
         lDC = self.cell2col(pMove[i])
 
-        self.__mCell[pMove[i]] = self.__mCell[pMove[i-1]]
-        self.__mCell[pMove[i-1]] = CELL_EMPTY
+        self._mCell[pMove[i]] = self._mCell[pMove[i-1]]
+        self._mCell[pMove[i-1]] = CELL_EMPTY
 
-        if (lDR == NROWS-1 and self.__mCell[pMove[i]] & CELL_OWN) or (lDR == 0 and self.__mCell[pMove[i]] & CELL_OTHER):
-          self.__mCell[pMove[i]] = self.__mCell[pMove[i]] | CELL_KING
+        if (lDR == NROWS-1 and self._mCell[pMove[i]] & CELL_OWN) or (lDR == 0 and self._mCell[pMove[i]] & CELL_OTHER):
+          self._mCell[pMove[i]] = self._mCell[pMove[i]] | CELL_KING
 
         lDR_capt = lDR-1 if lDR>lSR else lDR+1
         lDC_capt = lDC-1 if lDC>lSC else lDC+1
-        self.__mCell[self.row_col2cell(lDR_capt,lDC_capt)] = CELL_EMPTY
+        self._mCell[self.row_col2cell(lDR_capt,lDC_capt)] = CELL_EMPTY
 
         lSR = lDR
         lSC = lDC
 
     elif pMove.is_normal():
-      lDR = self.cell2row(pMove[1])
-      self.__mCell[pMove[1]] = self.__mCell[pMove[0]]
-      self.__mCell[pMove[0]] = CELL_EMPTY
+      self._invert_player()
 
-      if (lDR == NROWS-1 and self.__mCell[pMove[1]] & CELL_OWN) or (lDR == 0 and self.__mCell[pMove[1]] & CELL_OTHER):
-        self.__mCell[pMove[1]] = self.__mCell[pMove[1]] | CELL_KING
+      lDR = self.cell2row(pMove[1])
+      self._mCell[pMove[1]] = self._mCell[pMove[0]]
+      self._mCell[pMove[0]] = CELL_EMPTY
+
+      if (lDR == NROWS-1 and self._mCell[pMove[1]] & CELL_OWN) or (lDR == 0 and self._mCell[pMove[1]] & CELL_OTHER):
+        self._mCell[pMove[1]] = self._mCell[pMove[1]] | CELL_KING
+
+  def copy_and_move(self, pMove):
+    "Make a copy of self, apply the move and return the resulting board"
+    board = CBoard(self)
+    board.do_move(pMove)
+    return board
 
   #pretty-prints the board to standard output
   def print_out(self):
@@ -243,3 +299,33 @@ class CBoard:
           line += "  "
       print(line)
     print("----------------")
+
+  def game_over(self, moves = None):
+    "Returns True if the game is over. turn should be CELL_OWN or CELL_OTHER."
+    if None == moves:
+      moves = self.find_possible_moves()
+    return not moves
+
+  def evaluate(self, moves = None):
+    # ignoring draw for now. Should do something clever in endgame anyway...
+    if None == moves:
+      moves = self.find_possible_moves()
+    if not moves:
+      if self._player == CELL_OWN:
+        return 0.0 # we lose. 
+      else:
+        return 1.0 # we win.
+    own = 0
+    other = 0
+    for c in self._mCell:
+      if c & CELL_OWN:
+        if c & CELL_KING:
+          own += 2
+        else:
+          own += 1
+      elif c & CELL_OTHER:
+        if c & CELL_KING:
+          other += 2
+        else:
+          other += 1
+    return own / (own+other)
