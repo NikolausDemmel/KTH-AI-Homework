@@ -1,0 +1,5 @@
+
+ * evaluation function:
+   * detect end of game? Ignore draw for now.
+   * Should we take absolute or relative difference in # of pieces.
+   * How much is king worth? 2?
