@@ -41,6 +41,23 @@ public:
     ///\param pDue time before which we must have returned
     ///\return the move we make
     CMove Play(const CBoard &pBoard,const CTime &pDue);
+
+private:
+    bool CutoffTest(const CBoard &pBoard, const std::vector<CMove> &pMoves, int depth) const;
+
+    CMove AlphaBetaSearch(const CBoard &pBoard);
+
+    float MinValue(const CBoard &pBoard, float a, float b, int depth);
+    float MaxValue(const CBoard &pBoard, float a, float b, int depth);
+
+private:
+
+    int mMaxDepth;
+
+#ifdef DEBUG
+    int mNumberOfBoards;
+#endif
+
 };
 
 /*namespace chk*/ }

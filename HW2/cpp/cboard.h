@@ -20,7 +20,8 @@ public:
     ///if \p pInit is true, initializes the board to the starting position
     
     ///Otherwise, leave uninitialized
-    explicit CBoard(bool pInit=true)
+    explicit CBoard(bool pInit = true, ECell player = CELL_OWN):
+    		mPlayer(player)
     {
         if(pInit)
         {
@@ -42,23 +43,32 @@ public:
     /// \param pMove the movement to perform
     ///
     /// \sa DoMove()
-    CBoard(const CBoard &pRH,const CMove &pMove)
+    CBoard(const CBoard &pRH,const CMove &pMove):
+    	mPlayer(pRH.mPlayer)
     {
         memcpy(mCell,pRH.mCell,sizeof(mCell));
         
         DoMove(pMove);
     }
 
-
-
-    // constructs a board which a given cell vector
-    CBoard(const uint8_t cells[]) {
-    	for(int i = 0; i < cSquares; ++i) {
-    		mCell[i]ее
-    	}
+    ECell Player()
+    {
+    	return mPlayer;
     }
 
+    void SetPlayer(ECell player)
+    {
+    	mPlayer = player;
+    }
 
+    void TogglePlayer()
+    {
+    	if(mPlayer == CELL_OWN) {
+    		mPlayer = CELL_OTHER;
+    	} else {
+    		mPlayer = CELL_OWN;
+    	}
+    }
 
     ///returns the content of a cell in the board.
 
@@ -271,13 +281,11 @@ public:
     /// \param pMoves a vector where the list of moves will be appended
     /// \param pWho the \ref ECell code (CELL_OWN or CELL_OTHER) of the
     /// player making the move
-    void FindPossibleMoves(std::vector<CMove> &pMoves,int pWho) const
+    void FindPossibleMoves(std::vector<CMove> &pMoves) const
     {
         pMoves.clear();
-    
-        assert(pWho==CELL_OWN||pWho==CELL_OTHER);
 
-        int lOther=pWho^(CELL_OWN|CELL_OTHER);
+        int lOther=mPlayer^(CELL_OWN|CELL_OTHER);
     
         bool lFound=false;
         int lPieces[cPlayerPieces];
@@ -286,7 +294,7 @@ public:
         for(int i=0;i<cSquares;i++)
         {
             //if it belongs to the player making the move
-            if(At(i)&pWho)
+            if(At(i)&mPlayer)
             {
                 bool lIsKing=At(i)&CELL_KING;
 
@@ -323,6 +331,8 @@ public:
     {
         if(pMove.IsJump())
         {
+        	TogglePlayer();
+
             int lSR=CellToRow(pMove[0]);
             int lSC=CellToCol(pMove[0]);
         
@@ -360,6 +370,8 @@ public:
         }
         else if(pMove.IsNormal())
         {
+        	TogglePlayer();
+
             int lDR=CellToRow(pMove[1]);
             mCell[pMove[1]]=mCell[pMove[0]];
             mCell[pMove[0]]=CELL_EMPTY;
@@ -444,12 +456,79 @@ public:
         }
         std::cout << "----------------\n";
     }
+
+public:
+    bool GameOver(const std::vector<CMove> &pMoves) const
+    {
+    	return pMoves.empty();
+    }
+
+    float Evaluate(const std::vector<CMove> &pMoves) const
+    {
+    	// TODO: Idea. In endgame put bonus on being aggressive by bonusing jump moves
+    	if(pMoves.empty())
+    	{
+    		if(mPlayer == CELL_OWN){
+    			return 0.0;
+    		} else {
+    			return 1.0;
+    		}
+    	}
+    	else
+    	{
+    		int own = 0;
+    		int other = 0;
+    		for(int i = 0; i < cSquares; ++i) {
+    			uint8_t c = At(i);
+    			int row = i / 4;
+    			if (c & CELL_OWN) {
+    				if (c & CELL_KING) {
+    					own += KING_SCORE;
+    					if (row == 0 || row == 7) // piece is in top or bottom row
+    					{
+    						own += KING_SIDE;
+    					}
+    					if (c % 8 == 4 || c % 8 == 3) // piece is in left or right row
+    					{
+    						own += KING_SIDE;
+    					}
+    				} else {
+    					own += PAWN_SCORE;
+    					own += PAWN_POS*row*row; // award pieces moving forward
+    				}
+    			} else if (c & CELL_OTHER) {
+    				if (c & CELL_KING) {
+    					other += KING_SCORE;
+    					if (row == 0 || row == 7) // piece is in top or bottom row
+    					{
+    						other += KING_SIDE;
+    					}
+    					if (c % 8 == 4 || c % 8 == 3) // piece is in left or right row
+    					{
+    						other += KING_SIDE;
+    					}
+    				} else {
+    					other += PAWN_SCORE;
+    					other += PAWN_POS*(7-row)*(7-row); // award pieces moving forward
+    				}
+    			}
+    		}
+    		return float(own) / (own + other);
+    	}
+    }
     
+private:
+    static const int PAWN_SCORE = 1000;
+    static const int KING_SCORE = 1700;
+    static const int KING_SIDE = -50;
+    static const int PAWN_POS = 5;
+
 private:   
     //this is a bit ugly, but is useful for the implementation of 
     //FindPossibleMoves. It won't affect in single-threaded programs
     //and you're not allowed to use threads anyway
     mutable uint8_t mCell[cSquares];
+    mutable ECell mPlayer;
 };
 
 /*namespace chk*/ }

@@ -15,4 +15,6 @@ int main(int pArgC,char **pArgs)
     chk::CClient lClient(lPlayer);
     
     lClient.Run(pArgs[1],pArgs[2],pArgC>3?pArgs[3]:"");
+
+    return 0;
 }

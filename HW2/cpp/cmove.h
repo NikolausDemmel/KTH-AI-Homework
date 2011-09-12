@@ -164,6 +164,8 @@ private:
     std::basic_string<uint8_t> mData;
 };
 
+static const CMove NullMove = CMove();
+
 /*namespace chk*/ }
 
 #endif

@@ -4,8 +4,8 @@
 
 namespace chk {
 
-CClient::CClient(CPlayer &pPlayer)
-    :   mPlayer(pPlayer)
+CClient::CClient(CPlayer &pPlayer) :
+		mPlayer(pPlayer)
 {
 }
 
@@ -71,6 +71,8 @@ void CClient::Run(const std::string &pHost,const std::string &pPort,
     if(mStandalone)
         lTime=CTime::GetCurrent()+19000000;
 
+    mBoard.SetPlayer(lFirst ? CELL_OWN : CELL_OTHER);
+
     mPlayer.Initialize(lFirst,lTime);
 
     mSocket.WriteLine("INIT");
@@ -108,10 +110,15 @@ void CClient::Run(const std::string &pHost,const std::string &pPort,
                     break;
                 default:
                     std::cout << "INVALID GAME\n";
+                    break;
                 }
             }
             return;
         }
+
+#ifdef INFO
+        std::cout << "Opponent has chosen move: " << lMove.ToString() << std::endl;
+#endif
 
         mBoard.DoMove(lMove);
 
@@ -119,6 +126,10 @@ void CClient::Run(const std::string &pHost,const std::string &pPort,
         
         mSocket.WriteLine(lMove.ToString());
         
+#ifdef INFO
+        std::cout << "Player has chosen move: " << lMove.ToString() << std::endl;
+#endif
+
         if(lMove.IsEOG())
             return;
         

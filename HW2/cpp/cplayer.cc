@@ -23,22 +23,141 @@ void CPlayer::Initialize(bool pFirst,const CTime &pDue)
     
 CMove CPlayer::Play(const CBoard &pBoard,const CTime &pDue)
 {
-    //Use the commented version if your system supports ANSI color (linux does)
+#ifdef INFO
+	cout << endl << "### NEXT ROUND ###" << endl << endl;
+
     pBoard.Print();
-    //pBoard.PrintNoColor();
 
     std::vector<CMove> lMoves;
-    pBoard.FindPossibleMoves(lMoves,CELL_OWN);
-    /*
-     * Here you should write your clever algorithms to get the best next move.
-     * This skeleton returns a random movement instead.
-     */
+    pBoard.FindPossibleMoves(lMoves);
+#endif
 
+#ifdef INFO
+    cout << "Board value: " << pBoard.Evaluate(lMoves) << endl;
+#endif
+
+#ifdef DEBUG
+    cout << "Possible moves:" << endl;
     for(std::vector<CMove>::iterator it = lMoves.begin(); it != lMoves.end(); ++it) {
     	cout << it->ToString() << endl;
     }
+#endif
 
-    return lMoves[rand()%lMoves.size()];
+    mMaxDepth = 6;
+
+    CMove move = AlphaBetaSearch(pBoard);
+
+    return move;
+
+    //return lMoves[rand()%lMoves.size()];
+}
+
+bool CPlayer::CutoffTest(const CBoard &pBoard, const std::vector<CMove> &pMoves, int depth) const {
+	if (pBoard.GameOver(pMoves))
+		return true;
+	if (depth >= mMaxDepth)
+		return true;
+	return false;
+}
+
+CMove CPlayer::AlphaBetaSearch(const CBoard &pBoard)
+{
+#ifdef DEBUG
+	mNumberOfBoards = 0;
+#endif
+
+    vector<CMove> lMoves;
+    pBoard.FindPossibleMoves(lMoves);
+
+    if (lMoves.size() == 1) {
+    	return lMoves[0];
+    }
+
+    float v = -INFINITY;
+    CMove m = NullMove;
+
+    for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
+    	float vcurr = MinValue(CBoard(pBoard, *iter), v, INFINITY, 0);
+#ifdef DEBUG
+    	cout << "Move " << iter->ToString() << " has value " << vcurr << endl;
+#endif
+    	if (vcurr > v) {
+    		v = vcurr;
+    		m = *iter;
+    	}
+    }
+
+#ifdef DEBUG
+    cout << "Number of Boards looked at: " << mNumberOfBoards << endl;
+#endif
+
+    return m;
+}
+
+float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
+{
+#ifdef DEBUG
+	++mNumberOfBoards;
+#endif
+
+	vector<CMove> lMoves;
+	pBoard.FindPossibleMoves(lMoves);
+
+	if (lMoves.size() == 1) {
+		return MinValue(CBoard(pBoard,lMoves[0]), a, b, depth);
+	}
+
+	if (CutoffTest(pBoard, lMoves, depth)) {
+		return pBoard.Evaluate(lMoves);
+	}
+
+	float v = -INFINITY;
+
+    for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
+    	float vcurr = MinValue(CBoard(pBoard, *iter), a, b, depth+1);
+    	if (vcurr > v) {
+    		v = vcurr;
+    	}
+    	if (v >= b) {
+    		return v;
+    	}
+    	a = max(a,v);
+    }
+
+    return v;
+}
+
+float CPlayer::MinValue(const CBoard &pBoard, float a, float b, int depth)
+{
+#ifdef DEBUG
+	++mNumberOfBoards;
+#endif
+
+	vector<CMove> lMoves;
+	pBoard.FindPossibleMoves(lMoves);
+
+	if (lMoves.size() == 1) {
+		return MaxValue(CBoard(pBoard,lMoves[0]), a, b, depth);
+	}
+
+	if (CutoffTest(pBoard, lMoves, depth)) {
+		return pBoard.Evaluate(lMoves);
+	}
+
+	float v = INFINITY;
+
+    for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
+    	float vcurr = MaxValue(CBoard(pBoard, *iter), a, b, depth+1);
+    	if (vcurr < v) {
+    		v = vcurr;
+    	}
+    	if (v <= a) {
+    		return v;
+    	}
+    	b = min(b,v);
+    }
+
+    return v;
 }
 
 /*namespace chk*/ }

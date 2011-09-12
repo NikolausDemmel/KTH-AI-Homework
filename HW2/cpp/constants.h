@@ -1,6 +1,11 @@
 #ifndef _CHECKERS_CONSTANTS_H_
 #define _CHECKERS_CONSTANTS_H_
 
+#include <limits>
+
+#define DEBUG
+#define INFO
+
 namespace chk {
 
 ///this enumeration is used as the contents of squares in CBoard.
@@ -14,6 +19,8 @@ enum ECell
     CELL_KING=(1<<2),		///< the cell is a king
     CELL_INVALID=(1<<3)		///< the cell is invalid
 };
+
+const float INFINITY = std::numeric_limits<float>::infinity();
 
 /*namespace chk*/ }
 
