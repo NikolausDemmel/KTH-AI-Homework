@@ -346,8 +346,12 @@ class CBoard:
             if c == 0 or c == 7:
               own += KING_SIDE
             if is_endgame:
-              if self.has_adjacent_enemy(c,r):
-                own += ENDGAME_AGGRESSIVE_KING
+#              if self.has_adjacent_enemy(c,r):
+#                own += ENDGAME_AGGRESSIVE_KING
+              if (r >= 2 and r <= 5):
+                own += 0.1
+              if (c >= 2 and c <= 5):
+                own += 0.1
           else:
             own += PAWN_SCORE
             own += PAWN_POS * r * r
@@ -364,13 +368,15 @@ class CBoard:
     return own / (own+other)
 
 PAWN_SCORE=1
-KING_SCORE=2
-KING_SIDE=-0.1
-PAWN_POS=0.01
-ENDGAME_AGGRESSIVE_KING=0.2
+KING_SCORE=1.5
+KING_SIDE=-0.05
+PAWN_POS=0.005
+ENDGAME_AGGRESSIVE_KING=0.1
 ENDGAME=8
 
 # add random weight??
 
+# TODO: incentive to trade king for pawn when we have more pieces anyway
+
 def order_jumps(list_of_jump_moves):
-  list_of_jump_moves.sort(key=lambda m: m.number_of_jumps())
+  list_of_jump_moves.sort(key=lambda m: m.number_of_jumps(), reverse=True)
