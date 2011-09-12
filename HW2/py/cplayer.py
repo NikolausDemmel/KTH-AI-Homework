@@ -47,11 +47,14 @@ class CPlayer:
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(int(pDue-time.time()))
 
-    ultimate_max_depth = 100
+    ultimate_max_depth = 500
+    continue_search = True
 
     try:
       for self.max_depth in range(2,ultimate_max_depth):
-        move = self.a_b_search(pBoard)
+        move, continue_search = self.a_b_search(pBoard)
+        if not continue_search:
+          break
       signal.alarm(0)
     except Exception as e:
       print("Interrupted: " + str(e))
@@ -73,7 +76,7 @@ class CPlayer:
     a = NEGINF
     moves = board.find_possible_moves()
     if len(moves) == 1:
-      return moves[0]
+      return moves[0], False
     v,m = NEGINF, None
     for mcurr in moves:
       vcurr = self.min_value(board.copy_and_move(mcurr), a, INF, 0)
@@ -87,10 +90,14 @@ class CPlayer:
     print("finished a b search. Number of boards: %d. Best moves: '%s', value: %f" % (self.number_of_boards, list(map(lambda x: x.to_string(), m)), v))
     move = random.choice(m)
     print("choosing move " + move.to_string())
-    return move
+    return move, True
   
   def max_value(self, board, a, b, depth):
     moves = board.find_possible_moves()
+
+    if len(moves) == 1:
+      return self.min_value(board.copy_and_move(moves[0]), a, b, depth)
+
     if self.cutoff_test(board, depth, moves):
       return board.evaluate(moves)
     else:
@@ -105,6 +112,10 @@ class CPlayer:
 
   def min_value(self, board, a, b, depth):
     moves = board.find_possible_moves()
+
+    if len(moves) == 1:
+      return self.max_value(board.copy_and_move(moves[0]), a, b, depth)
+
     if self.cutoff_test(board, depth, moves):
       return board.evaluate(moves)
     else:
