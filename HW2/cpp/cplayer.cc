@@ -1,5 +1,7 @@
 #include "cplayer.h"
 #include <cstdlib>
+#include <signal.h>
+#include <sys/time.h>
 #include <iostream>
 
 using namespace std;
@@ -7,8 +9,33 @@ using namespace std;
 namespace chk
 {
 
+bool gTimeout = false;
+
+void timeout_handler (int i) {
+	gTimeout = true;
+}
+
+void check_timeout() {
+	if(gTimeout) {
+		throw timeout_exception();
+	}
+}
+
 CPlayer::CPlayer()
 {
+}
+
+void CPlayer::DisableTimer() {
+	setitimer(ITIMER_REAL, 0, 0);
+}
+
+void CPlayer::EnableTimer(const CTime &pDue) {
+	struct itimerval diff;
+
+	CTime::GetCurrent().ToITimevalUntil(pDue, diff);
+	gTimeout = false;
+
+	setitimer(ITIMER_REAL, &diff, 0);
 }
 
 bool CPlayer::Idle(const CBoard &pBoard)
@@ -18,6 +45,7 @@ bool CPlayer::Idle(const CBoard &pBoard)
 
 void CPlayer::Initialize(bool pFirst,const CTime &pDue)
 {
+	signal(SIGALRM,timeout_handler);
     srand(CTime::GetCurrent().Get());
 }
     
@@ -43,11 +71,28 @@ CMove CPlayer::Play(const CBoard &pBoard,const CTime &pDue)
     }
 #endif
 
-    mMaxDepth = 6;
+    const int ultimateDepthLimit = 1000;
+    pair<CMove,bool> result;
 
-    CMove move = AlphaBetaSearch(pBoard);
+    EnableTimer(pDue);
 
-    return move;
+    try {
+    	for(mMaxDepth = 1; mMaxDepth <= ultimateDepthLimit; ++mMaxDepth) {
+#ifdef INFO
+    		cout << "                     	Searching depth " << mMaxDepth << endl;
+#endif
+    		result = AlphaBetaSearch(pBoard);
+    		if (! result.second)
+    			break;
+    	}
+    	DisableTimer();
+    } catch(exception &e) {
+#ifdef DEBUG
+    	cout << "Exception: " << e.what() << endl;
+#endif
+    }
+
+    return result.first;
 
     //return lMoves[rand()%lMoves.size()];
 }
@@ -60,7 +105,7 @@ bool CPlayer::CutoffTest(const CBoard &pBoard, const std::vector<CMove> &pMoves,
 	return false;
 }
 
-CMove CPlayer::AlphaBetaSearch(const CBoard &pBoard)
+pair<CMove,bool> CPlayer::AlphaBetaSearch(const CBoard &pBoard)
 {
 #ifdef DEBUG
 	mNumberOfBoards = 0;
@@ -70,7 +115,7 @@ CMove CPlayer::AlphaBetaSearch(const CBoard &pBoard)
     pBoard.FindPossibleMoves(lMoves);
 
     if (lMoves.size() == 1) {
-    	return lMoves[0];
+    	return pair<CMove,bool>(lMoves[0], false);
     }
 
     float v = -INFINITY;
@@ -91,11 +136,13 @@ CMove CPlayer::AlphaBetaSearch(const CBoard &pBoard)
     cout << "Number of Boards looked at: " << mNumberOfBoards << endl;
 #endif
 
-    return m;
+    return pair<CMove, bool>(m, (v == 1.0 || v == 0.0) ? false : true); // don't search on if we know we will win or loose.
 }
 
 float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
 {
+	check_timeout();
+
 #ifdef DEBUG
 	++mNumberOfBoards;
 #endif
@@ -129,6 +176,8 @@ float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
 
 float CPlayer::MinValue(const CBoard &pBoard, float a, float b, int depth)
 {
+	check_timeout();
+
 #ifdef DEBUG
 	++mNumberOfBoards;
 #endif

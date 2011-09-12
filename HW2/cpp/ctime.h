@@ -94,6 +94,23 @@ public:
         }
     }
 
+    void ToITimevalUntil(const CTime &pUntil,struct itimerval &pDiff) const
+    {
+        int64_t lDiff=pUntil.mTime-mTime;
+        if(lDiff<=0)
+        {
+            pDiff.it_value.tv_sec=0;
+            pDiff.it_value.tv_usec=0;
+        }
+        else
+        {
+            pDiff.it_value.tv_sec=lDiff/1000000;
+            pDiff.it_value.tv_usec=lDiff%1000000;
+        }
+        pDiff.it_interval.tv_sec = 0;
+        pDiff.it_interval.tv_usec = 0;
+    }
+
     ///returns a CTime object representing the current time
     static CTime GetCurrent()
     {

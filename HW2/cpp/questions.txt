@@ -1,3 +1,5 @@
+[TODO]
+
 What does your method do?
  My method uses alpha-beta search algorithm with all the latest enhancements (Lu 1993). It had an average minimum search depth of 19 ply, excluding search extensions (one ply equals one move by one player)
 

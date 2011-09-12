@@ -6,9 +6,22 @@
 #include "cmove.h"
 #include "cboard.h"
 #include <vector>
+#include <exception>
+#include <utility>
+
+using namespace std;
 
 namespace chk
 {
+
+class timeout_exception: public exception
+{
+public:
+	virtual const char* what() const throw()
+	{
+		return "Timeout";
+	}
+};
 
 class CPlayer
 {
@@ -43,9 +56,12 @@ public:
     CMove Play(const CBoard &pBoard,const CTime &pDue);
 
 private:
-    bool CutoffTest(const CBoard &pBoard, const std::vector<CMove> &pMoves, int depth) const;
+    void EnableTimer(const CTime &pDue);
+    void DisableTimer();
 
-    CMove AlphaBetaSearch(const CBoard &pBoard);
+    bool CutoffTest(const CBoard &pBoard, const vector<CMove> &pMoves, int depth) const;
+
+    pair<CMove,bool> AlphaBetaSearch(const CBoard &pBoard);
 
     float MinValue(const CBoard &pBoard, float a, float b, int depth);
     float MaxValue(const CBoard &pBoard, float a, float b, int depth);
