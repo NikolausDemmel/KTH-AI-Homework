@@ -29,6 +29,8 @@ class CPlayer:
   # pDue-time.time()<0.1.
   def initialize(self,pFirst,pDue):
     random.seed()
+    self._boards = {} 
+    self._round = 0
 
   # this is the function from which you play!
 
@@ -73,6 +75,9 @@ class CPlayer:
     # assume there is at least 1 possible move and it is our turn
     print("starting a b serach. Max depth: %d" % self.max_depth)
     self.number_of_boards = 0
+    self.succ_lookups = 0
+    self.succ_move_lookups = 0
+    self._round += 1
     a = NEGINF
     moves = board.find_possible_moves()
     if len(moves) == 1:
@@ -87,47 +92,81 @@ class CPlayer:
       elif v == vcurr:
         m.append(mcurr)
       a = max(a,v)
-    print("finished a b search. Number of boards: %d. Best moves: '%s', value: %f" % (self.number_of_boards, list(map(lambda x: x.to_string(), m)), v))
-    move = random.choice(m)
+    print("finished a b search. Number of boards: %d. Lookups: %d. Move lookups: %d." % (self.number_of_boards, self.succ_lookups, self.succ_move_lookups))
+    print("Best moves: '%s', value: %f" % (list(map(lambda x: x.to_string(), m)), v))
+##    move = random.choice(m)
+    move = m[0]
     print("choosing move " + move.to_string())
     return move, True
   
+  def save_info(self, info, moves, value):
+    info[0] = self._round
+    info[1] = value
+    info[2] = moves
+    return value
+
   def max_value(self, board, a, b, depth):
-    moves = board.find_possible_moves()
+    state = board.state()
+    info = self._boards.get(state)
+
+    if info:
+      if info[0] == self._round:
+        self.succ_lookups += 1
+        return info[1]
+      else:
+        moves = info[2]
+        self.succ_move_lookups += 1
+    else:
+      info = [None, None, None]
+      self._boards[state] = info
+      moves = board.find_possible_moves()
 
     if len(moves) == 1:
       board.do_move(moves[0])
-      return self.min_value(board, a, b, depth)
+      return self.save_info(info, moves, self.min_value(board, a, b, depth))
 
     if self.cutoff_test(board, depth, moves):
-      return board.evaluate(moves)
+      return self.save_info(info, moves, board.evaluate(moves))
     else:
       v = NEGINF
       for m in moves:
         v = max(v, self.min_value(board.copy_and_move(m), a, b, depth+1))
         self.number_of_boards += 1
         if v >= b:
-          return v
+          return self.save_info(info, moves, v)
         a = max(a,v)
-      return v
+      return self.save_info(info, moves, v)
 
   def min_value(self, board, a, b, depth):
-    moves = board.find_possible_moves()
+    state = board.state()
+    info = self._boards.get(state)
+
+    if info:
+      if info[0] == self._round:
+        self.succ_lookups += 1
+        return info[1]
+      else:
+        moves = info[2]
+        self.succ_move_lookups += 1
+    else:
+      info = [None, None, None]
+      self._boards[state] = info
+      moves = board.find_possible_moves()
 
     if len(moves) == 1:
       board.do_move(moves[0])
-      return self.max_value(board, a, b, depth)
+      return  self.save_info(info, moves, self.max_value(board, a, b, depth))
 
     if self.cutoff_test(board, depth, moves):
-      return board.evaluate(moves)
+      return  self.save_info(info, moves, board.evaluate(moves))
     else:
       v = INF
       for m in moves:
         v = min(v, self.max_value(board.copy_and_move(m), a, b, depth+1))
         self.number_of_boards += 1
         if v <= a:
-          return v
+          return self.save_info(info, moves, v)
         b = min(b,v)
-      return v
+      return self.save_info(info, moves, v)
 
       
