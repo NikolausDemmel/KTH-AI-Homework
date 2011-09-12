@@ -105,6 +105,14 @@ class CBoard:
     if pR&1 == pC&1:
       return CELL_INVALID
     return self._mCell[pR*(NROWS//2)+(pC>>1)]
+
+  def has_adjacent_enemy(self,r,c):
+    if (self.at(r+1,c+1) & CELL_OTHER or 
+        self.at(r+1,c-1) & CELL_OTHER or
+        self.at(r-1,c+1) & CELL_OTHER or
+        self.at(r-1,c-1) & CELL_OTHER):
+      return True
+    return False
     
   def __setcell(self,pR,pC,pValue):
     self._mCell[pR*(NROWS//2)+(pC>>1)]=pValue
@@ -194,10 +202,14 @@ class CBoard:
           lPieces.append(i)
 
     if not lFound:
+      if self._player == CELL_OWN: # move ordering
+        lPieces.reverse()
       for p in lPieces:
         lIsKing = self.atcell(p) & CELL_KING
         self.__try_move(lMoves,p,lOther,lIsKing)
-    
+    else:
+      order_jumps(lMoves)
+
     return lMoves
 
   def _invert_player(self):
@@ -311,6 +323,9 @@ class CBoard:
     # http://www.mec-acm.org/assets/archive/assets/Checkers/Checkers_page.htm
     
     # ignoring draw for now. Should do something clever in endgame anyway...
+
+    is_endgame = self._numberOfPieces <= ENDGAME
+
     if None == moves:
       moves = self.find_possible_moves()
     if not moves:
@@ -330,6 +345,9 @@ class CBoard:
               own += KING_SIDE
             if c == 0 or c == 7:
               own += KING_SIDE
+            if is_endgame:
+              if self.has_adjacent_enemy(c,r):
+                own += ENDGAME_AGGRESSIVE_KING
           else:
             own += PAWN_SCORE
             own += PAWN_POS * r * r
@@ -349,5 +367,10 @@ PAWN_SCORE=1
 KING_SCORE=2
 KING_SIDE=-0.1
 PAWN_POS=0.01
+ENDGAME_AGGRESSIVE_KING=0.2
+ENDGAME=8
 
 # add random weight??
+
+def order_jumps(list_of_jump_moves):
+  list_of_jump_moves.sort(key=lambda m: m.number_of_jumps())

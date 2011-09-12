@@ -96,7 +96,8 @@ class CPlayer:
     moves = board.find_possible_moves()
 
     if len(moves) == 1:
-      return self.min_value(board.copy_and_move(moves[0]), a, b, depth)
+      board.do_move(moves[0])
+      return self.min_value(board, a, b, depth)
 
     if self.cutoff_test(board, depth, moves):
       return board.evaluate(moves)
@@ -114,7 +115,8 @@ class CPlayer:
     moves = board.find_possible_moves()
 
     if len(moves) == 1:
-      return self.max_value(board.copy_and_move(moves[0]), a, b, depth)
+      board.do_move(moves[0])
+      return self.max_value(board, a, b, depth)
 
     if self.cutoff_test(board, depth, moves):
       return board.evaluate(moves)
