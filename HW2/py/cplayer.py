@@ -45,7 +45,7 @@ class CPlayer:
     move = self.a_b_search(pBoard)
 
     signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(int(pDue-time.time()))
+    signal.setitimer(signal.ITIMER_REAL, pDue-time.time())
 
     ultimate_max_depth = 500
     continue_search = True
@@ -55,7 +55,7 @@ class CPlayer:
         move, continue_search = self.a_b_search(pBoard)
         if not continue_search:
           break
-      signal.alarm(0)
+      signal.setitimer(signal.ITIMER_REAL,0)
     except Exception as e:
       print("Interrupted: " + str(e))
 

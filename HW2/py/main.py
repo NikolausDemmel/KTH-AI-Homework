@@ -77,7 +77,7 @@ while True:
 #  print("server expects answer: %f" % (int(lTokens[0])/1000000.0) )
 
   if lStandalone:
-      lTime=time.time()+9.0
+      lTime=time.time()+10.0
   else:
       lTime=int(lTokens[0])/1000000.0
   lMove=CMove.from_string(lTokens[1])
