@@ -513,14 +513,14 @@ public:
     				}
     			}
     		}
-    		return float(own) / (own + other);
+    		return float(own + (rand()%50)) / (own + other);
     	}
     }
     
 private:
     static const int PAWN_SCORE = 1000;
-    static const int KING_SCORE = 1700;
-    static const int KING_SIDE = -50;
+    static const int KING_SCORE = 2000;
+    static const int KING_SIDE = -100;
     static const int PAWN_POS = 5;
 
 private:   

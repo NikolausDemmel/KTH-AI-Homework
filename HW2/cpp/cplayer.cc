@@ -77,7 +77,8 @@ CMove CPlayer::Play(const CBoard &pBoard,const CTime &pDue)
     EnableTimer(pDue);
 
     try {
-    	for(mMaxDepth = 1; mMaxDepth <= ultimateDepthLimit; ++mMaxDepth) {
+    	// NOTE: possible variation: increase 2 ply at a time.
+    	for(mMaxDepth = 1; mMaxDepth <= ultimateDepthLimit; mMaxDepth += 1) {
 #ifdef INFO
     		cout << "                     	Searching depth " << mMaxDepth << endl;
 #endif

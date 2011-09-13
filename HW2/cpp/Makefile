@@ -10,6 +10,8 @@ run: build
 
 clean:
 	rm client
+
+zip: demmel_cpp_hw2.zip
 	
 demmel_cpp_hw2.zip: email.txt rulecode.txt questions.txt *.h *.cc
 	zip demmel_cpp_hw2.zip email.txt rulecode.txt questions.txt *.h *.cc
