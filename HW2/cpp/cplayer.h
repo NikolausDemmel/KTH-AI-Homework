@@ -67,6 +67,9 @@ private:
     float MinValue(const CBoard &pBoard, float a, float b, int depth);
     float MaxValue(const CBoard &pBoard, float a, float b, int depth);
 
+    void OrderMoves(vector<CMove> &moves);
+    void RecordSufficientMove(const CMove &move, int depth);
+
 private:
 
     int mMaxDepth;

@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -71,6 +72,12 @@ CMove CPlayer::Play(const CBoard &pBoard,const CTime &pDue)
     }
 #endif
 
+#ifdef DEBUG
+    cout << "Max move history score: " << mMoveHistory.MaxScore() << endl;
+#endif
+
+    // mMoveHistory.DampScores(2); // FIXME: bit twiddeling about how much to damp
+
     const int ultimateDepthLimit = 1000;
     pair<CMove,bool> result;
 
@@ -122,6 +129,7 @@ pair<CMove,bool> CPlayer::AlphaBetaSearch(const CBoard &pBoard)
     float v = -INFINITY;
     CMove m = NullMove;
 
+    // FIXME: call MaxValue really, and add history ordering this way.
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
     	float vcurr = MinValue(CBoard(pBoard, *iter), v, INFINITY, 0);
 #ifdef DEBUG
@@ -159,19 +167,26 @@ float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
 		return pBoard.Evaluate(lMoves);
 	}
 
+	OrderMoves(lMoves);
+
 	float v = -INFINITY;
+    CMove m = NullMove;
 
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
     	float vcurr = MinValue(CBoard(pBoard, *iter), a, b, depth+1);
+
     	if (vcurr > v) {
     		v = vcurr;
+    		m = *iter;
     	}
     	if (v >= b) {
+    		RecordSufficientMove(*iter,depth);
     		return v;
     	}
     	a = max(a,v);
     }
 
+	RecordSufficientMove(m,depth);
     return v;
 }
 
@@ -194,20 +209,42 @@ float CPlayer::MinValue(const CBoard &pBoard, float a, float b, int depth)
 		return pBoard.Evaluate(lMoves);
 	}
 
+	OrderMoves(lMoves);
+
 	float v = INFINITY;
+    CMove m = NullMove;
 
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
     	float vcurr = MaxValue(CBoard(pBoard, *iter), a, b, depth+1);
     	if (vcurr < v) {
     		v = vcurr;
+    		m = *iter;
     	}
     	if (v <= a) {
+    		RecordSufficientMove(*iter,depth);
     		return v;
     	}
     	b = min(b,v);
     }
 
+	RecordSufficientMove(m,depth);
     return v;
+}
+
+void CPlayer::OrderMoves(vector<CMove> &moves)
+{
+	// sort by history for now, maybe factor in value of jumps.
+	sort(moves.begin(), moves.end(), mMoveHistory.mCompareMoves);
+}
+
+void CPlayer::RecordSufficientMove(const CMove &move, int curr_depth)
+{
+	int subtree_depth = mMaxDepth - curr_depth;
+	// FIXME: find out best value.
+	//        1<<depth has been suggested, but then we need to worry about overflow.
+	//		  depth*depth, or 1 would also be possible
+	int score = subtree_depth*subtree_depth;// 1<<subtree_depth;
+	mMoveHistory.Increase(move, score);
 }
 
 /*namespace chk*/ }
