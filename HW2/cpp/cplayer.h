@@ -5,6 +5,7 @@
 #include "ctime.h"
 #include "cmove.h"
 #include "cboard.h"
+#include "cmovehistory.h"
 #include <vector>
 #include <exception>
 #include <utility>
@@ -69,6 +70,8 @@ private:
 private:
 
     int mMaxDepth;
+
+    CMoveHistory mMoveHistory;
 
 #ifdef DEBUG
     int mNumberOfBoards;
