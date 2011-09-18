@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual C++ Express 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "guiCheckers", "guiCheckers.vcproj", "{F4C9325C-1E31-4A8C-A777-70B2A6425FC5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F4C9325C-1E31-4A8C-A777-70B2A6425FC5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F4C9325C-1E31-4A8C-A777-70B2A6425FC5}.Debug|Win32.Build.0 = Debug|Win32
+		{F4C9325C-1E31-4A8C-A777-70B2A6425FC5}.Release|Win32.ActiveCfg = Release|Win32
+		{F4C9325C-1E31-4A8C-A777-70B2A6425FC5}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

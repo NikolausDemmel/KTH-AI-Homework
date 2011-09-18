@@ -1,0 +1,124 @@
+<h3>Using Gui Checkers v1.05</h3>
+<p>by <em>Jonathan Kreuzer<br>
+  <a href="http://www.3dkingdoms.com/checkers.htm">www.3dkingdoms.com/checkers.htm</a></em></p>
+<p><strong>Files:</strong></p>
+<p>You should unzip all the files to the same directory, then run guicheckers.exe.</p>
+<ul>
+  <li> <em>guicheckers.exe - </em>the checkers program with a graphical user interface.</li>
+  <li> <em>guicheck.dll -</em> the same checkers engine, in a format that can 
+    only be run by <a href="http://www.fierz.ch/checkers.htm">CheckerBoard</a>.</li>
+  <li> <em>opening.gbk</em> - the opening book, it contains a database of opening 
+    positions to play into. </li>
+  <li> <em>database.jef</em> - an endgame database for 2v2 pieces or fewer. </li>
+</ul>
+
+  
+<p>If you want to use the .dll in CheckerBoard, you should copy to your checkerboard 
+  directory, guicheck.dll, opening.gbk, and database.jef.<br>
+  For the newest CheckerBoard and Gui 1.05, copy everything to the engines directory 
+  instead of the base directory.<br>
+  Gui Checkers will run without complaining even without opening.gbk and database.jef 
+  in the same directory, but won't be able to use them. </p>
+<p><strong>Search Info Display</strong>:<br>
+  Depth: 20/30 (0/8) Eval: -101 Move: 24-20 Time: 2.03s KNodes: 5500 KN/sec: 2730<br>
+  <br>
+  This line means the computer started searching depth 20 but got information 
+  back from 0 of 8 moves, so it only completed up to depth 18. The 30 is the depth 
+  of the longest line it searched.<br>
+  For the Evaluation, negative values are good for white, positive good for black, 
+  and 100 is about equal to one checker.<br>
+  Also given is the best move found so far, the amount of time spent searching, 
+  and amount of kilonodes searched, and the number of kilonodes searched per second.</p>
+  
+<p><strong>Bottom Right Buttons:</strong></p>
+<p>From the bottom right bar you can review the game, or tell the computer to 
+  move now. </p>
+<p><em>Go:</em> If the computer idle, the computer will be set to the side to 
+  move and begin thinking about its move.<br>
+  If the computer is currently thinking, this will cause the computer to move 
+  now ('m' is the keyboard shortcut for move now)<br>
+  <br>
+  <em>Retract:</em> If you decide you didn't like your last move, this will retract 
+  it so you can make a different one.</p>
+<p> <em>&lt;|</em> : Go to the beginning of the game.<br>
+  <em>&lt;</em> : Step backwards in the game.<br>
+  <em>&gt;</em> : Step forwards in the game.<br>
+  <em>|&gt;</em> : Go to the end of the game.<br>
+  <br>
+  <strong>Menu Options:</strong></p>
+<p><em> Game-&gt;Save Game</em>: Save the game as a .pdn file. If the file exists, 
+  it will be written over.<br>
+  <em>Game-&gt;Load Game</em>: Load the game from a .pdn file.</p>
+<p><em>Edit-&gt;Position Edit</em>: Set a new start position for this game. Detailed 
+  instructions appear in the bottom window.<br>
+  <em>Edit-&gt;Copy FEN</em>: Copy a position to the clipboard as a text FEN string. 
+  FEN is a standard format.<br>
+  <em>Edit-&gt;Paste FEN</em>: Paste a FEN position from the clipboard.<br>
+  <em>Edit-&gt;Copy PDN</em>: Copy a full game to the clipboard as a PDN string. 
+  PDN is a standard checkers game format.<br>
+  <em>Edit-&gt;Paste PDN</em>: Paste a PDN game from the clipboard.</p>
+<p> <em>Level-&gt;Beginner</em>: The computer will search at most 2 ply.<br>
+  <em>Level-&gt;Advanced</em>: The computer will search at most 8 ply.<br>
+  <em>Level-&gt;Expert</em>: The computer will search as far as possible in the 
+  time given.<br>
+  <em>Level-&gt;x Secs/Move</em>: The computer will think for about number of 
+  seconds, almost never more than twice this number.<br>
+  <em>Level-&gt;User Defined:</em> Type in max search depth and max seconds per 
+  move. </p>
+<p><em>Options-&gt;Flip Board</em>: Toggle between white or black pieces on the 
+  bottom.<br>
+  <em>Options-&gt;Computer Off:</em> The computer won't move any pieces, you'll 
+  play both sides.<br>
+  <br>
+  <strong>Development Menu Options:</strong> (you probably won't use these features)<br>
+  <br>
+  <em>Options-&gt;Hashing Toggle</em>: Turn off hashing, slowing down the search. 
+  <br>
+  <em>Options-&gt;Clear Hash</em>: Clear the hash table, this is needed to research 
+  a test position from scratch, etc.<br>
+  <em>Right-Click on Board:</em> Show evaluation of the current board.<br>
+  <br>
+  You can add/alter positions in the opening book in memory with the keyboard. 
+  You can then manually save the book. <br>
+  Positions have a value associated with them on whether they're neutral '0', 
+  good for white, or good for red.<br>
+  The computer will randomly choose from positions which are good for it, or neutral 
+  if there are no good positions. It will ignore bad positions.<br>
+  <br>
+  '3' - Add Current Board position / adjust towards '0'<br>
+  '2' - Add/Adjust to being good for red<br>
+  '4' - Add/Adjust to being good for white<br>
+  '6' - Remove Position<br>
+  'C' - Clear Opening Book in memory<br>
+  'S' - Save Opening Book </p>
+<p><strong>Version History:</strong> </p>
+  	 
+<ul>
+  <li> <em>v1.05</em>: Added a bitboard representation on top of the current program. 
+    This has resulted in a speed increase of 50%-100% (varies with position.) 
+    <br>
+    I made the engine a separate thread from the interface. Now you can start 
+    and stop the search at any time, and the information updates regularily.<br>
+    Slight changes to the search extensions. Evaluation also isn't exactly the 
+    same. A few adjustments to the opening book were made.</li>
+  <li> v1.00: This is the first version to have an opening book, having a book 
+    yielded much better results in test matches. The GUI now supports PDNs, along 
+    with other smaller changes. No changes of note to the search or evaluation.</li>
+  <li> v0.99: The engine is definitely stronger and the GUI has been updated with 
+    more options. The evaluation and search have been improved, and I corrected 
+    a few bugs. I made my own endgame database for 4-pc and less endings.</li>
+  <li> v0.90, v.80, v.75.... older versions, changes not logged.</li>
+</ul>
+<p></p>
+<p><strong>Miscellaneous:</strong></p>
+<p><em>Future Plans:</em><br>
+  Someday I may write a better book learning algorithm and recompute the book.<br>
+  Add an analysis mode.<br>
+  Maybe add all the standard search tricks I know of.<br>
+  <br>
+  <em>Why is it named Gui Checkers? </em><br>
+  The first version had a ASCII interface and a simple engine, and was called 
+  &quot;simple checkers.&quot; (Not a very original name, I have later found 3 
+  other programs with that name.) When I added the graphical user interface, I 
+  changed the name to &quot;Gui Checkers.&quot;</p>
+<p>&nbsp;</p>
