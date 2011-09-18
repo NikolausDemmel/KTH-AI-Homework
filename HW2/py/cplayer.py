@@ -29,8 +29,17 @@ class CPlayer:
   # pDue-time.time()<0.1.
   def initialize(self,pFirst,pDue):
     random.seed()
-    self._boards = {} 
     self._round = 0
+    self.init_state_dicts()
+
+  def init_state_dicts(self):
+    self._states = list(map(lambda x: {}, range(24)))
+
+  def get_state_dict(self, board):
+    return self._states[-board.numberOfPieces()]
+
+  def free_unused_state_dicts(self, max_number_of_pieces):
+    self._states = self._states[len(self._states)-max_number_of_pieces:]
 
   # this is the function from which you play!
 
@@ -42,6 +51,9 @@ class CPlayer:
   def play(self,pBoard,pDue):
     pBoard.print_out() 
     print("value: %f, turn: %s" % (pBoard.evaluate(),"we" if pBoard.player() == CELL_OWN else "they"))
+
+    self.free_unused_state_dicts(pBoard.numberOfPieces())
+    print("Length of state dict list: %d" % len(self._states))
 
     self.max_depth = 1
     move = self.a_b_search(pBoard)
@@ -107,7 +119,8 @@ class CPlayer:
 
   def max_value(self, board, a, b, depth):
     state = board.state()
-    info = self._boards.get(state)
+    state_dict = self.get_state_dict(board)
+    info = state_dict.get(state)
 
     if info:
       if info[0] == self._round:
@@ -118,7 +131,7 @@ class CPlayer:
         self.succ_move_lookups += 1
     else:
       info = [None, None, None]
-      self._boards[state] = info
+      state_dict[state] = info
       moves = board.find_possible_moves()
 
     if len(moves) == 1:
@@ -139,7 +152,8 @@ class CPlayer:
 
   def min_value(self, board, a, b, depth):
     state = board.state()
-    info = self._boards.get(state)
+    state_dict = self.get_state_dict(board)
+    info = state_dict.get(state)
 
     if info:
       if info[0] == self._round:
@@ -150,7 +164,7 @@ class CPlayer:
         self.succ_move_lookups += 1
     else:
       info = [None, None, None]
-      self._boards[state] = info
+      state_dict[state] = info
       moves = board.find_possible_moves()
 
     if len(moves) == 1:
