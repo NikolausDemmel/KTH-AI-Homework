@@ -5,8 +5,19 @@
 
 #define DEBUG
 #define INFO
+//#define LINEAR_EVAL
+#define EXTEND_FORCE_MOVE
+
 
 namespace chk {
+
+#ifdef LINEAR_EVAL
+typedef int eval_t;
+#else
+typedef float eval_t;
+#endif
+
+const float Infinity = std::numeric_limits<eval_t>::max();
 
 ///this enumeration is used as the contents of squares in CBoard.
 ///the CELL_OWN and CELL_OTHER constants are also used to refer
@@ -20,7 +31,6 @@ enum ECell
     CELL_INVALID=(1<<3)		///< the cell is invalid
 };
 
-const float INFINITY = std::numeric_limits<float>::infinity();
 
 /*namespace chk*/ }
 

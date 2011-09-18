@@ -463,7 +463,7 @@ public:
     	return pMoves.empty();
     }
 
-    float Evaluate(const std::vector<CMove> &pMoves) const
+    eval_t Evaluate(const std::vector<CMove> &pMoves) const
     {
     	// TODO: Idea. In endgame put bonus on being aggressive by bonusing jump moves
     	if(pMoves.empty())
@@ -513,7 +513,11 @@ public:
     				}
     			}
     		}
+#ifdef LINEAR_EVAL
+    		return own - other + rand()%20 - 10;
+#else
     		return float(own + (rand()%50)) / (own + other);
+#endif
     	}
     }
     

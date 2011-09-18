@@ -1,7 +1,5 @@
-[TODO]
-
 What does your method do?
- My method uses alpha-beta search algorithm with all the latest enhancements (Lu 1993). It had an average minimum search depth of 19 ply, excluding search extensions (one ply equals one move by one player)
+ I'm using minimax with alpha beta pruning. To get optimal searching depth with the given time I do iterative deepening from starting from 1 ply. When I detect a timeout I use the best move from the last finished iteration. For move odering I utilize the history heuristic, where I treat moves with the same start and end field as being equal. I don't do much for initialization and don't utilized idle time. If I have only one move to choose, I take it straight away. If I found a certain way to win, I will not search further. If during the search I encounter a board with only one move, I dont count this towards the search depth. The evaluation function is mainly just counting material and some limited positional bonus / penalty.
 
- If your method was allowed an infite amount of time to make each move, would it be impossible to defeat it?
- Since the algorithm uses an admissible heuristic, the decission is optimal and my agent cannot lose.
+If your method was allowed an infite amount of time to make each move, would it be impossible to defeat it?
+ The actual program would need minor adjustments, but the method in general should be impossible to defeat. We know that Checkers is a draw, so by the nature of minimax I will be able to find a move that will not result in losing for sure. (One thing that I would maybe need to add, is a detection of draws in the search (just count the number of moves since last piece taken). I could then give a draw a higher value than a loss.)

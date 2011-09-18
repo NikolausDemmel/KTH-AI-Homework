@@ -126,12 +126,12 @@ pair<CMove,bool> CPlayer::AlphaBetaSearch(const CBoard &pBoard)
     	return pair<CMove,bool>(lMoves[0], false);
     }
 
-    float v = -INFINITY;
+    float v = -Infinity;
     CMove m = NullMove;
 
     // FIXME: call MaxValue really, and add history ordering this way.
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
-    	float vcurr = MinValue(CBoard(pBoard, *iter), v, INFINITY, 0);
+    	float vcurr = MinValue(CBoard(pBoard, *iter), v, Infinity, 0);
 #ifdef DEBUG
     	cout << "Move " << iter->ToString() << " has value " << vcurr << endl;
 #endif
@@ -140,6 +140,8 @@ pair<CMove,bool> CPlayer::AlphaBetaSearch(const CBoard &pBoard)
     		m = *iter;
     	}
     }
+
+    // do something clever when you think we have lost...
 
 #ifdef DEBUG
     cout << "Number of Boards looked at: " << mNumberOfBoards << endl;
@@ -160,6 +162,9 @@ float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
 	pBoard.FindPossibleMoves(lMoves);
 
 	if (lMoves.size() == 1) {
+#ifndef EXTEND_FORCE_MOVE
+		++depth;
+#endif
 		return MinValue(CBoard(pBoard,lMoves[0]), a, b, depth);
 	}
 
@@ -169,7 +174,7 @@ float CPlayer::MaxValue(const CBoard &pBoard, float a, float b, int depth)
 
 	OrderMoves(lMoves);
 
-	float v = -INFINITY;
+	float v = -Infinity;
     CMove m = NullMove;
 
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
@@ -202,6 +207,9 @@ float CPlayer::MinValue(const CBoard &pBoard, float a, float b, int depth)
 	pBoard.FindPossibleMoves(lMoves);
 
 	if (lMoves.size() == 1) {
+#ifndef EXTEND_FORCE_MOVE
+		++depth;
+#endif
 		return MaxValue(CBoard(pBoard,lMoves[0]), a, b, depth);
 	}
 
@@ -211,7 +219,7 @@ float CPlayer::MinValue(const CBoard &pBoard, float a, float b, int depth)
 
 	OrderMoves(lMoves);
 
-	float v = INFINITY;
+	float v = Infinity;
     CMove m = NullMove;
 
     for(vector<CMove>::iterator iter = lMoves.begin(); iter != lMoves.end(); ++iter) {
