@@ -244,6 +244,8 @@ bool CSocket::ReadLine(std::string &pLine,bool pBlock)
         if(pBlock) continue;
         return false;
     }
+
+    return false; // make compiler shut up
 }
 
 void CSocket::Buffer()

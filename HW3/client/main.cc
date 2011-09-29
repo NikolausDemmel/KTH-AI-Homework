@@ -30,4 +30,6 @@ int main(int pArgC,char **pArgs)
     }
     
     lClient.Run(pArgs[1],pArgs[2],lArgs,lStandalone);
+
+    return 0;
 }
