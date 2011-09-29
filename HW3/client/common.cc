@@ -43,6 +43,17 @@ const char* actionToString(EAction a) {
 	}
 }
 
+const char* actionToShortString(EAction a) {
+	switch(a) {
+	case ACTION_ACCELERATE:
+		return "A";
+	case ACTION_KEEPSPEED:
+		return "K";
+	case ACTION_STOP:
+		return "S";
+	}
+}
+
 string movementToString(int m) {
 	switch(m) {
 	case BIRD_STOPPED:

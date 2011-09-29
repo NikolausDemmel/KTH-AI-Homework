@@ -1,7 +1,8 @@
 
 SERVER=130.237.218.85
-PORT=5559
+PORT=12321
 MODE=STANDALONE
+OPTIONS=practice
 
 all: build
 
@@ -11,7 +12,7 @@ client: *.cc *.h
 	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -o client *.cc
 
 run: build
-	./client $(SERVER) $(PORT) $(MODE)
+	./client $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
 build-opt: client-opt
 
@@ -19,7 +20,7 @@ client-opt: *.cc *.h
 	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -DNDEBUG -o client-opt *.cc
 
 run-opt: client-opt
-	./client-opt $(SERVER) $(PORT) $(MODE)
+	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
 clean:
 	rm client

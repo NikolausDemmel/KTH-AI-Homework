@@ -3,10 +3,13 @@
 
 #include "ctime.h"
 #include "cstate.h"
+#include "hmm.h"
+#include "duckobservation.h"
 #include <vector>
 
 namespace ducks
 {
+
 
 class CPlayer
 {
@@ -49,6 +52,7 @@ public:
     ///\param pDuck the duck index
     ///\param pSpecies the species of the duck (it will also be set for this duck in pState from now on)    
     void Hit(int pDuck,ESpecies pSpecies);
+
 };
 
 /*namespace ducks*/ }

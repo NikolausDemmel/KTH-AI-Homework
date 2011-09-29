@@ -1,20 +1,44 @@
 #include "cplayer.h"
+#include "duckobservation.h"
 #include <cstdlib>
 #include <iostream>
+#include <vector>
+
+using namespace std;
 
 namespace ducks
 {
 
 CPlayer::CPlayer()
 {
+	cout.precision(5);
 }
 
 CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 {
-    /*
-     * Here you should write your clever algorithms to get the best action.
-     * This skeleton never shoots.
-     */
+	HMM<3,9, DuckObservation> duck_model;
+
+	const CDuck &duck = pState.GetDuck(0);
+
+	int T = duck.GetSeqLength();
+	cout << "T = " << T << endl;
+
+	std::vector<DuckObservation> obs(T);
+	for (int t = 0; t < T; ++t) {
+		obs[t] = DuckObservation(duck.GetAction(t));
+	}
+
+	for (int i = 0; i < 9; ++i) {
+		cout << i << ": " << DuckObservation(i) << endl;
+	}
+
+	duck_model.printState();
+
+	duck_model.learnModel(obs);
+
+	duck_model.printState();
+
+
 
     //this line doesn't shoot any bird
     return cDontShoot;
