@@ -13,6 +13,7 @@
 #include <limits>
 #include <list>
 #include <iomanip>
+#include <algorithm>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -100,6 +101,11 @@ public:
 		A = &A2;
 		B = &B2;
 		pi = &pi2;
+	}
+
+	observation predictNext() {
+		c_vector<prob, M> obs_dist = prod((*alpha)[T-1],(*B));
+		return observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
 	}
 
 	void alphaPass() {
@@ -264,7 +270,7 @@ public:
 	void learnModel() {
 		assert(validObservations());
 
-#ifdef DEBUG
+#ifdef DEBUGfg
 		cout << "learnModel call with T = " << T << " observations: " << endl;
 		for (int t = 0; t < obs.size(); ++t) {
 			cout << obs[t].str() << " ";
@@ -274,7 +280,7 @@ public:
 		////////////////
 		// 1. Initialization
 
-		int maxIters = 300; // FIXME: this is arbitrary
+		int maxIters = 1000; // FIXME: this is arbitrary
 		int iters = 0;
 		prob oldLogProb = -numeric_limits<prob>::max();
 
@@ -284,50 +290,50 @@ public:
 		gamma1.resize(T);
 		bigamma1.resize(T);
 
-//		c2.resize(T);
-//		alpha2.resize(T);
-//		beta2.resize(T);
-//		gamma2.resize(T);
-//		bigamma2.resize(T);
+		c2.resize(T);
+		alpha2.resize(T);
+		beta2.resize(T);
+		gamma2.resize(T);
+		bigamma2.resize(T);
 
 //		check_differences();
 
 		while(true)
 		{
-#ifdef FOO
-			cout << "        ITERATION " << iters << endl << endl;
+#ifdef DEBUGjj
+			//cout << "        ITERATION " << iters << endl << endl;
 #endif
 			////////////////
 			// 2. alpha pass
 			set1();
 			alphaPass();
 
-//			set2();
-//			alphaPassLoopy();
+			set2();
+			alphaPassLoopy();
 
 			////////////////
 			// 3. beta pass
 			set1();
 			betaPass();
 
-//			set2();
-//			betaPassLoopy();
+			set2();
+			betaPassLoopy();
 
 			////////////////
 			// 4. compute bi_gamma and gamma
 			set1();
 			gammaPass();
 
-//			set2();
-//			gammaPassLoopy();
+			set2();
+			gammaPassLoopy();
 
 			////////////////
 			// 5. re-estimate A, B and pi
 			set1();
 			reestimateModel();
 
-//			set2();
-//			reestimateModelLoopy();
+			set2();
+			reestimateModelLoopy();
 
 			////////////////
 			// 6. compute log[P(O|lambda)]
@@ -339,7 +345,7 @@ public:
 			}
 			logProb = -logProb;
 
-#ifdef FOO
+#ifdef DEBUGjj
 			cout.precision(10);
 			cout << "LogProb delta:" << logProb - oldLogProb << endl;
 			cout.precision(5);
@@ -413,11 +419,13 @@ public:
 			foreach (list<string> x, obs_names) {
 				int m = x.size() - 1; // first one is name of group
 				matrix<prob> mat = matrix<prob>(N,m);
+				mat.clear();
 				for (int i = 0; i < N; ++i) {
 					for (int j = 0; j < M; ++j) {
 						mat(i, (j/factor) % m) += (*B)(i,j);
 					}
 				}
+				factor *= m;
 				B_split.push_back(mat);
 			}
 		}
@@ -426,7 +434,7 @@ public:
 	void print_B_split()
 	{
 		if (!B_split.empty()) {
-			cout << "Split of B in " << obs_names.size() << " names" << endl;
+			cout << "Split of B in " << obs_names.size() << " independent distributions:" << endl;
 			int k = 0;
 			foreach (list<string> names, obs_names) {
 				matrix<prob> mat = B_split[k];

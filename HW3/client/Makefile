@@ -17,13 +17,14 @@ run: build
 build-opt: client-opt
 
 client-opt: *.cc *.h
-	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -DNDEBUG -o client-opt *.cc
+	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -o client-opt *.cc
 
 run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
 clean:
-	rm client
+	rm -f client
+	rm -f client-opt
 
 #zip: demmel_cpp_hw2.zip
 

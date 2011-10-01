@@ -19,24 +19,26 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	const CDuck &duck = pState.GetDuck(0);
 
 	int T = duck.GetSeqLength();
-	cout << "T = " << T << endl;
+	//cout << "T = " << T << endl;
 
 	std::vector<DuckObservation> obs(T);
 	for (int t = 0; t < T; ++t) {
 		obs[t] = DuckObservation(duck.GetAction(t));
 	}
 
-	duck_model.printState();
+	//duck_model.printState();
 
 	duck_model.setObservations(obs);
 	duck_model.learnModel();
+
+	duck_model.check_differences();
 
 	duck_model.printState();
 
 
 
     //this line doesn't shoot any bird
-    return cDontShoot;
+    return duck_model.predictNext().toAction();
 
     //this line would predict that bird 0 is totally stopped and shoot at it
     //return CAction(0,ACTION_STOP,ACTION_STOP,BIRD_STOPPED);

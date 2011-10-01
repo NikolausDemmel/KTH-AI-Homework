@@ -38,6 +38,28 @@ public:
 	{
 	}
 
+	operator int() const
+	{
+		return mObs;
+	}
+
+	CAction toAction(int birdNumber = 0, int movement = 0) const
+	{
+		EAction h = static_cast<EAction>(mObs % 3);
+		EAction v = static_cast<EAction>(mObs / 3);
+		return CAction(birdNumber, h, v, movement);
+	}
+
+	string str() const
+	{
+		std::stringstream ss;
+		int h = mObs % 3;
+		int v = mObs / 3;
+		ss << "" << actionToShortString(static_cast<EAction>(h));
+		ss << "" << actionToShortString(static_cast<EAction>(v));
+		return ss.str();
+	}
+
 	static std::vector<list<string>> getSplitNames() {
 		std::vector<list<string>> names;
 
@@ -56,21 +78,6 @@ public:
 		names.push_back(vert);
 
 		return names;
-	}
-
-	string str() const
-	{
-		std::stringstream ss;
-		int h = mObs % 3;
-		int v = mObs / 3;
-		ss << "" << actionToShortString(static_cast<EAction>(h));
-		ss << "" << actionToShortString(static_cast<EAction>(v));
-		return ss.str();
-	}
-
-	operator int() const
-	{
-		return mObs;
 	}
 
 private:
