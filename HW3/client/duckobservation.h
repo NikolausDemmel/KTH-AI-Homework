@@ -10,8 +10,11 @@
 
 
 #include <sstream>
+#include <vector>
+#include <list>
 
-using namespace std;
+using std::string;
+using std::list;
 
 
 namespace ducks {
@@ -35,9 +38,29 @@ public:
 	{
 	}
 
+	static std::vector<list<string>> getSplitNames() {
+		std::vector<list<string>> names;
+
+		list<string> hori;
+		hori.push_back("H");
+		for(int a = 0; a < 3; ++a) {
+			hori.push_back(actionToShortString(static_cast<EAction>(a)));
+		}
+		names.push_back(hori);
+
+		list<string> vert;
+		vert.push_back("V");
+		for(int a = 0; a < 3; ++a) {
+			vert.push_back(actionToShortString(static_cast<EAction>(a)));
+		}
+		names.push_back(vert);
+
+		return names;
+	}
+
 	string str() const
 	{
-		stringstream ss;
+		std::stringstream ss;
 		int h = mObs % 3;
 		int v = mObs / 3;
 		ss << "" << actionToShortString(static_cast<EAction>(h));

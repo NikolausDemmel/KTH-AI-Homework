@@ -12,9 +12,19 @@
 #include <random>
 #include <functional>
 #include <string>
+#include <boost/foreach.hpp>
 
 
 #define DEBUG
+
+
+// Make Eclipse parser happy
+#ifdef __CDT_PARSER__
+    #define foreach(a, b) for(a : b)
+#else
+    #define foreach BOOST_FOREACH
+#endif
+
 
 
 

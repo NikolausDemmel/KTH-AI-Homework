@@ -4,8 +4,6 @@
 #include <iostream>
 #include <vector>
 
-using namespace std;
-
 namespace ducks
 {
 
@@ -16,7 +14,7 @@ CPlayer::CPlayer()
 
 CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 {
-	HMM<3,9, DuckObservation> duck_model;
+	HMM<3,9, DuckObservation> duck_model(DuckObservation::getSplitNames());
 
 	const CDuck &duck = pState.GetDuck(0);
 
@@ -28,13 +26,10 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 		obs[t] = DuckObservation(duck.GetAction(t));
 	}
 
-	for (int i = 0; i < 9; ++i) {
-		cout << i << ": " << DuckObservation(i) << endl;
-	}
-
 	duck_model.printState();
 
-	duck_model.learnModel(obs);
+	duck_model.setObservations(obs);
+	duck_model.learnModel();
 
 	duck_model.printState();
 
