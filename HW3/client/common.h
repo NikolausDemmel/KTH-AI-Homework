@@ -9,6 +9,7 @@
 #define COMMON_H_
 
 #include "constants.h"
+#include "ctime.h"
 #include <random>
 #include <functional>
 #include <string>
@@ -41,7 +42,7 @@ static std::mt19937 engine(rd());
 static std::function<unsigned int()> rnd = std::bind(unif, engine);
 
 template<class real = double>
-real random_delta(real number, real fraction = 0.1) {
+real random_delta(real number, real fraction = 0.2) {
 	std::uniform_real_distribution<> dist(-number*fraction,number*fraction);
 	return dist(engine);
 }
@@ -73,7 +74,7 @@ void check_timeout();
 
 
 
-void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff) const;
+void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff);
 
 };
 

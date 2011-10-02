@@ -96,9 +96,9 @@ void check_timeout() {
 	}
 }
 
-void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff) const
+void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff)
 {
-    int64_t lDiff=pUntil.mTime-pNow.Get();
+    int64_t lDiff=pUntil.Get()-pNow.Get();
     if(lDiff<=0)
     {
         pDiff.it_value.tv_sec=0;

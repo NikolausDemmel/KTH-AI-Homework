@@ -4,7 +4,7 @@
 #include "ctime.h"
 #include "cstate.h"
 #include "hmm.h"
-#include "duckobservation.h"
+#include "duckinfo.h"
 #include <vector>
 
 namespace ducks
@@ -14,27 +14,14 @@ namespace ducks
 class CPlayer
 {
 public:
-    ///constructor
-    
-    ///There is no data in the beginning, so not much should be done here.
     CPlayer();
 
-    ///shoot!
+    void Initialize(const CState &pState);
 
-    ///This is the function where you should do all your work.
-    ///
-    ///you will receive a variable pState, which contains information about all ducks,
-    ///both dead and alive. Each duck contains all past actions.
-    ///
-    ///The state also contains the scores for all players and the number of
-    ///time steps elapsed since the last time this function was called.
-    ///
-    ///Check their documentation for more information.
-    ///\param pState the state object
-    ///\param pDue time before which we must have returned
-    ///\return the position we want to shoot at, or cDontShoot if we 
-    ///prefer to pass
+
     CAction Shoot(const CState &pState,const CTime &pDue);
+
+    CAction PracticeModeShoot(const CState &pState,const CTime &pDue);
 
     ///guess the species!
 
@@ -55,6 +42,14 @@ public:
 
     void DisableTimer();
     void EnableTimer(const CTime &pDue);
+
+private:
+
+    std::vector<DuckInfo> mDuckInfo;
+    const CState *mState;
+    bool mFirstTime;
+    int mNumDucks;
+    int mRound;
 
 };
 

@@ -2,7 +2,7 @@
 SERVER=130.237.218.85
 PORT=12321
 MODE=STANDALONE
-OPTIONS=practice
+OPTIONS=numbirds=180 numspecies=5 numturns=500 timeperturn=1
 
 all: build
 
@@ -14,8 +14,11 @@ client: *.cc *.h
 run: build
 	./client $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
-test:
-	for i in {1..100} ; do $(MAKE) run | grep "good guess"; done | wc -l
+run-practice: build
+	./client $(SERVER) $(PORT) $(MODE) practice
+
+test-practice:
+	for i in {1..100} ; do $(MAKE) run-practice | grep "good guess"; done | wc -l
 
 build-opt: client-opt
 
@@ -25,17 +28,20 @@ client-opt: *.cc *.h
 run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
-test-opt:
-	for i in {1..100} ; do $(MAKE) run-opt | grep "wrong"; done | wc -l
+run-practice-opt: client-opt
+	./client-opt $(SERVER) $(PORT) $(MODE) practice maxturns=1500
+
+test-practice-opt:
+	for i in {1..100} ; do $(MAKE) run-practice-opt | grep "wrong"; done | wc -l
 
 clean:
 	rm -f client
 	rm -f client-opt
 
-#zip: demmel_cpp_hw2.zip
+zip: demmel_cpp_hw3.zip
 
-#demmel_cpp_hw2.zip: email.txt rulecode.txt questions.txt *.h *.cc
-#	zip demmel_cpp_hw2.zip email.txt rulecode.txt questions.txt *.h *.cc
+demmel_cpp_hw3.zip: *.h *.cc
+	zip demmel_cpp_hw3.zip *.h *.cc
 
 #runtest: test
 #	./test	

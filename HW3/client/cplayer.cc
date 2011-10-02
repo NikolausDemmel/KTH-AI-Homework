@@ -11,10 +11,29 @@ namespace ducks
 
 CPlayer::CPlayer()
 {
+	mFirstTime = true;
 	cout.precision(5);
 	cout << std::fixed;
 	signal(SIGALRM,timeout_handler);
 }
+
+void CPlayer::Initialize(const CState &pState)
+{
+#ifdef DEBUG
+	cout << "INITIALIZATION" << endl;
+#endif
+
+	mRound = 0;
+	mFirstTime = false;
+	mState = &pState;
+	mNumDucks = mState->GetNumDucks();
+
+	mDuckInfo.resize(mNumDucks);
+	for (int i = 0; i < mNumDucks; ++i) {
+		mDuckInfo[i].setDuck(&(mState->GetDuck(i)));
+	}
+}
+
 
 void CPlayer::DisableTimer() {
 	setitimer(ITIMER_REAL, 0, 0);
@@ -31,21 +50,75 @@ void CPlayer::EnableTimer(const CTime &pDue) {
 
 CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 {
+	if(pState.GetNumDucks() == 1)
+		return PracticeModeShoot(pState, pDue);
+
+	/*
+	if (mFirstTime == true)
+		Initialize(pState);
+
+
+
+	int newTurns = mState->GetNumNewTurns();
+	mRound += newTurns;
+#ifdef DEBUG
+	cout << "ROUND: " << mRound << endl;
+#endif
+
+	static bool stillWaiting = true;
+
+	if (mRound < 100) {
+		cout << "Too little info. Don't shoot" << endl;
+		return cDontShoot;
+	}
+
+	if (stillWaiting) {
+		stillWaiting = false;
+		newTurns = mRound;
+	}
+
+#ifdef DEBUGfaegsr
+	cout << "New turns: " << newTurns << endl;
+#endif
+
+	try
+	{
+		EnableTimer(pDue);
+		for (int i = 0; i < mState->GetNumDucks(); ++i) {
+			mDuckInfo[i].update(newTurns);
+		}
+		mDuckInfo[0].getModel().printState();
+		DisableTimer();
+	}
+	catch(std::exception &e) {
+		cout << "Exception: " << e.what() << endl;
+	}*/
+
+	cout << "Failsafe: Don't shoot." << endl;
+	return cDontShoot;
+}
+
+CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
+{
+	cout << "PRACTICE MODE" << endl << endl;
+
+
 	HMM<3,9, DuckObservation> duck_model(DuckObservation::getSplitNames());
 
 	const CDuck &duck = pState.GetDuck(0);
 
 	int T = duck.GetSeqLength();
-	//cout << "T = " << T << endl;
 
-	std::vector<DuckObservation> obs(T);
+	cout << "T = " << T << endl;
+
+	std::vector<DuckObservation> obs;
 	for (int t = 0; t < T; ++t) {
-		obs[t] = DuckObservation(duck.GetAction(t));
+		obs.push_back(DuckObservation(duck.GetAction(t)));
 	}
 
-	//duck_model.printState();
+//	duck_model.printState();
 
-	duck_model.setObservations(obs);
+	duck_model.setObservations(&obs);
 
 	try {
 		EnableTimer(pDue);
@@ -58,16 +131,13 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 //	duck_model.check_differences();
 
+#ifdef DEBUG
 	duck_model.printState();
+#endif
 
-
-
-    //this line doesn't shoot any bird
-    return duck_model.predictNext().toAction();
-
-    //this line would predict that bird 0 is totally stopped and shoot at it
-    //return CAction(0,ACTION_STOP,ACTION_STOP,BIRD_STOPPED);
+	return duck_model.predictNext().toAction();
 }
+
 
 void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 {
@@ -75,11 +145,19 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
      * Here you should write your clever algorithms to guess the species of each alive bird.
      * This skeleton guesses that all of them are white... they were the most likely after all!
      */
+
+#ifdef DEBUG
+	cout << "GUESSING" << endl;
+#endif
+
+	//mDuckInfo[0].getModel().printState();
+	//mDuckInfo[1].getModel().printState();
      
     for(int i=0;i<pDucks.size();i++)
     {
-         if(pDucks[i].IsAlive())
+         if(pDucks[i].IsAlive()) {
              pDucks[i].SetSpecies(SPECIES_WHITE);
+         }
     }
 }
 

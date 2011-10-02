@@ -63,9 +63,9 @@ public:
 	}
 
 	bool validObservations() const {
-		if (T > obs.size())
+		if (T > obs->size() || T < 0)
 			return false;
-		foreach(observation o, obs) {
+		foreach(observation o, (*obs)) {
 			if (o < 0 || o >= M) {
 				return false;
 			}
@@ -73,12 +73,8 @@ public:
 		return true;
 	}
 
-	void setObservations(const std::vector<observation> &obs_, int T_ = -1) {
-		if (T_ < 0) {
-			T_ = obs_.size();
-		}
+	void setObservations(std::vector<observation> *obs_) {
 		obs = obs_;
-		T = T_;
 	}
 
 	void set1() {
@@ -109,12 +105,12 @@ public:
 	}
 
 	void alphaPass() {
-		noalias((*alpha)[0]) = element_prod((*pi),column((*B),obs[0]));
+		noalias((*alpha)[0]) = element_prod((*pi),column((*B),(*obs)[0]));
 		(*c)[0] = 1 / sum((*alpha)[0]);
 		(*alpha)[0] *= (*c)[0];
 
 		for (int t = 1; t < T; ++t) {
-			noalias((*alpha)[t]) = element_prod(prod((*alpha)[t-1], (*A)), column((*B),obs[t]));
+			noalias((*alpha)[t]) = element_prod(prod((*alpha)[t-1], (*A)), column((*B),(*obs)[t]));
 			(*c)[t] = 1 / sum((*alpha)[t]);
 			(*alpha)[t] *= (*c)[t];
 		}
@@ -124,7 +120,7 @@ public:
 		// compute alpha(0)
 		(*c)[0] = 0;
 		for (int i = 0; i < N; ++i) {
-			(*alpha)[0][i] = (*pi)[i]*(*B)(i,obs[0]);
+			(*alpha)[0][i] = (*pi)[i]*(*B)(i,(*obs)[0]);
 			(*c)[0] += (*alpha)[0][i];
 		}
 
@@ -142,7 +138,7 @@ public:
 				for (int j = 0; j < N; ++j) {
 					(*alpha)[t][i] += (*alpha)[t-1][j]*(*A)(j,i);
 				}
-				(*alpha)[t][i] *= (*B)(i,obs[t]);
+				(*alpha)[t][i] *= (*B)(i,(*obs)[t]);
 				(*c)[t] += (*alpha)[t][i];
 			}
 
@@ -158,7 +154,7 @@ public:
 		noalias((*beta)[T-1]) = scalar_vector<prob>(N, (*c)[T-1]);
 
 		for (int t = T-2; t >= 0; --t) {
-			noalias((*beta)[t]) = prod((*A), element_prod(column((*B),obs[t+1]), (*beta)[t+1])) * (*c)[t];
+			noalias((*beta)[t]) = prod((*A), element_prod(column((*B),(*obs)[t+1]), (*beta)[t+1])) * (*c)[t];
 		}
 	}
 
@@ -173,7 +169,7 @@ public:
 			for (int i = 0; i < N; ++i) {
 				(*beta)[t][i] = 0;
 				for (int j = 0; j < N; ++j) {
-					(*beta)[t][i] += (*A)(i,j)*(*B)(j,obs[t+1])*(*beta)[t+1][j];
+					(*beta)[t][i] += (*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j];
 				}
 				// scale beta(t,i) with same factor as alpha(t,i)
 				(*beta)[t][i] *= (*c)[t];
@@ -186,7 +182,7 @@ public:
 
 			noalias((*bigamma)[t]) =
 				element_prod((*A), outer_prod((*alpha)[t],
-										   element_prod(column((*B),obs[t+1]),
+										   element_prod(column((*B),(*obs)[t+1]),
 												   	    (*beta)[t+1])));
 			(*bigamma)[t] /= sum(prod(scalar_vector<prob>(N, 1.0), (*bigamma)[t]));
 			noalias((*gamma)[t]) = prod((*bigamma)[t], scalar_vector<prob>(N,1));
@@ -198,13 +194,13 @@ public:
 			prob denom = 0;
 			for (int i = 0; i < N; ++i) {
 				for (int j = 0; j < N; ++j) {
-					denom += (*alpha)[t][i]*(*A)(i,j)*(*B)(j,obs[t+1])*(*beta)[t+1][j];
+					denom += (*alpha)[t][i]*(*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j];
 				}
 			}
 			for (int i = 0; i < N; ++i) {
 				(*gamma)[t][i] = 0;
 				for (int j = 0; j < N; ++j) {
-					(*bigamma)[t](i,j) = ((*alpha)[t][i]*(*A)(i,j)*(*B)(j,obs[t+1])*(*beta)[t+1][j]) / denom;
+					(*bigamma)[t](i,j) = ((*alpha)[t][i]*(*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j]) / denom;
 					(*gamma)[t][i] += (*bigamma)[t](i,j);
 				}
 			}
@@ -227,7 +223,7 @@ public:
 		// re-estimate B
 		(*B).clear();
 		for (int t = 0; t < T-1; ++t) {
-			noalias(column((*B),obs[t])) += (*gamma)[t];
+			noalias(column((*B),(*obs)[t])) += (*gamma)[t];
 		}
 		(*B) = element_div((*B), outer_prod(gammasum-(*gamma)[T-1], scalar_vector<prob>(M,1)));
 	}
@@ -257,7 +253,7 @@ public:
 				prob numer = 0;
 				prob denom = 0;
 				for (int t = 0; t < T-1; ++t) {
-					if (obs[t] == j) {
+					if ((*obs)[t] == j) {
 						numer += (*gamma)[t][i];
 					}
 					denom += (*gamma)[t][i];
@@ -267,21 +263,25 @@ public:
 		}
 	}
 
-	void learnModel() {
+	void learnModel(int maxIters = 1000, int T_ = -1) {
+		if (T_ < 0)
+			T = obs->size();
+		else
+			T = T_;
+
 		assert(validObservations());
 
-#ifdef DEBUGfg
+#ifdef DEBUGdd
 		cout << "learnModel call with T = " << T << " observations: " << endl;
-		for (int t = 0; t < obs.size(); ++t) {
-			cout << obs[t].str() << " ";
+		for (int t = 0; t < obs->size(); ++t) {
+			cout << (*obs)[t].str() << " ";
 		}
 		cout << endl;
 #endif
 		////////////////
 		// 1. Initialization
 
-		int maxIters = 10000; // FIXME: this is arbitrary
-		prob eps = 1e-7; // FIXME: this is arbitrary
+		prob eps = 1e-5; // FIXME: this is arbitrary
 		int iters = 0;
 		prob logProb = -numeric_limits<prob>::max();
 		prob oldLogProb = 0;
@@ -305,40 +305,40 @@ public:
 			oldLogProb = logProb;
 			check_timeout();
 
-#ifdef DEBUGjj
-			//cout << "        ITERATION " << iters << endl << endl;
+#ifdef DEBUGdd
+			cout << "ITERATION " << iters << endl << endl;
 #endif
 			////////////////
 			// 2. alpha pass
 			set1();
-			alphaPass();
+//			alphaPass();
 
 //			set2();
-//			alphaPassLoopy();
+			alphaPassLoopy();
 
 			////////////////
 			// 3. beta pass
 			set1();
-			betaPass();
+//			betaPass();
 
 //			set2();
-//			betaPassLoopy();
+			betaPassLoopy();
 
 			////////////////
 			// 4. compute bi_gamma and gamma
 			set1();
-			gammaPass();
+//			gammaPass();
 
 //			set2();
-//			gammaPassLoopy();
+			gammaPassLoopy();
 
 			////////////////
 			// 5. re-estimate A, B and pi
 			set1();
-			reestimateModel();
+//			reestimateModel();
 
 //			set2();
-//			reestimateModelLoopy();
+			reestimateModelLoopy();
 
 			////////////////
 			// 6. compute log[P(O|lambda)]
@@ -353,7 +353,7 @@ public:
 			}
 			logProb = -logProb;
 
-#ifdef DEBUG
+#ifdef DEBUGdd
 			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
 #endif
 
@@ -361,9 +361,9 @@ public:
 
 			++iters;
 		}
-		while (iters < maxIters && logProb-eps > oldLogProb);
+		while (iters < maxIters && logProb - eps > oldLogProb);
 
-#ifdef DEBUG
+#ifdef DEBUGdd
 		cout << "learnModel ended after iteration " << iters << endl;
 		std::cerr << iters << endl;
 #endif
@@ -376,7 +376,7 @@ public:
 		cout << "A:" << endl;
 		for (int i = 0; i < N; ++i) {
 			for (int j = 0; j < N; ++j) {
-				cout << (*A)(i,j) << " ";
+				cout << exp((*A)(i,j)) << " ";
 			}
 			cout << endl;
 		}
@@ -389,7 +389,7 @@ public:
 		cout << endl;
 		for (int i = 0; i < N; ++i) {
 			for (int j = 0; j < M; ++j) {
-				cout << (*B)(i,j) << " ";
+				cout << exp((*B)(i,j)) << " ";
 			}
 			cout << endl;
 		}
@@ -397,7 +397,7 @@ public:
 		// print pi
 		cout << endl << "pi: " << endl;
 		for (int i = 0; i < N; ++i) {
-			cout << (*pi)[i] << " ";
+			cout << exp((*pi)[i]) << " ";
 		}
 		cout << endl << endl;
 
@@ -461,7 +461,7 @@ public:
 	template<class T>
 	void check_difference_many_abs(const string name, const vector<T> &a, const vector<T> &b) const {
 		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		double diff = 0;
+		prob diff = 0;
 		for (int i = 0; i < a.size(); ++i) {
 			diff += abs(a[i] - b[i]);
 		}
@@ -472,7 +472,7 @@ public:
 	template<class T>
 	void check_difference_many_norm1(const string name, const vector<T> &a, const vector<T> &b) const {
 		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		double diff = 0;
+		prob diff = 0;
 		for (int i = 0; i < a.size(); ++i) {
 			diff += norm_1(a[i] - b[i]);
 		}
@@ -483,7 +483,7 @@ public:
 	template<class T>
 	void check_difference_many_norm2(const string name, const vector<T> &a, const vector<T> &b) const {
 		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		double diff = 0;
+		prob diff = 0;
 		for (int i = 0; i < a.size(); ++i) {
 			diff += norm_2(a[i] - b[i]);
 		}
@@ -561,7 +561,7 @@ public:
 	std::vector<matrix<prob>> B_split;
 
 	int T;
-	std::vector<observation> obs;
+	std::vector<observation> *obs;
 };
 
 
