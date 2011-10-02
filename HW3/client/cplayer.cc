@@ -7,9 +7,26 @@
 namespace ducks
 {
 
+
+
 CPlayer::CPlayer()
 {
 	cout.precision(5);
+	cout << std::fixed;
+	signal(SIGALRM,timeout_handler);
+}
+
+void CPlayer::DisableTimer() {
+	setitimer(ITIMER_REAL, 0, 0);
+}
+
+void CPlayer::EnableTimer(const CTime &pDue) {
+	struct itimerval diff;
+
+	ITimevalUntil(CTime::GetCurrent(), pDue, diff);
+	gTimeout = false;
+
+	setitimer(ITIMER_REAL, &diff, 0);
 }
 
 CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
@@ -29,9 +46,17 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	//duck_model.printState();
 
 	duck_model.setObservations(obs);
-	duck_model.learnModel();
 
-	duck_model.check_differences();
+	try {
+		EnableTimer(pDue);
+		duck_model.learnModel();
+		DisableTimer();
+	}
+	catch (timeout_exception &e) {
+		cout << e.what() << endl;
+	}
+
+//	duck_model.check_differences();
 
 	duck_model.printState();
 

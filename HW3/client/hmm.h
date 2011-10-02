@@ -280,9 +280,11 @@ public:
 		////////////////
 		// 1. Initialization
 
-		int maxIters = 1000; // FIXME: this is arbitrary
+		int maxIters = 10000; // FIXME: this is arbitrary
+		prob eps = 1e-7; // FIXME: this is arbitrary
 		int iters = 0;
-		prob oldLogProb = -numeric_limits<prob>::max();
+		prob logProb = -numeric_limits<prob>::max();
+		prob oldLogProb = 0;
 
 		c1.resize(T);
 		alpha1.resize(T);
@@ -290,16 +292,19 @@ public:
 		gamma1.resize(T);
 		bigamma1.resize(T);
 
-		c2.resize(T);
-		alpha2.resize(T);
-		beta2.resize(T);
-		gamma2.resize(T);
-		bigamma2.resize(T);
+//		c2.resize(T);
+//		alpha2.resize(T);
+//		beta2.resize(T);
+//		gamma2.resize(T);
+//		bigamma2.resize(T);
 
 //		check_differences();
 
-		while(true)
+		do
 		{
+			oldLogProb = logProb;
+			check_timeout();
+
 #ifdef DEBUGjj
 			//cout << "        ITERATION " << iters << endl << endl;
 #endif
@@ -308,67 +313,64 @@ public:
 			set1();
 			alphaPass();
 
-			set2();
-			alphaPassLoopy();
+//			set2();
+//			alphaPassLoopy();
 
 			////////////////
 			// 3. beta pass
 			set1();
 			betaPass();
 
-			set2();
-			betaPassLoopy();
+//			set2();
+//			betaPassLoopy();
 
 			////////////////
 			// 4. compute bi_gamma and gamma
 			set1();
 			gammaPass();
 
-			set2();
-			gammaPassLoopy();
+//			set2();
+//			gammaPassLoopy();
 
 			////////////////
 			// 5. re-estimate A, B and pi
 			set1();
 			reestimateModel();
 
-			set2();
-			reestimateModelLoopy();
+//			set2();
+//			reestimateModelLoopy();
 
 			////////////////
 			// 6. compute log[P(O|lambda)]
 
+//			check_differences();
+			//printState();
+
 			set1();
-			prob logProb = 0;
+			logProb = 0;
 			for (int t = 0; t < T; ++t) {
 				logProb += log2((*c)[t]);
 			}
 			logProb = -logProb;
 
-#ifdef DEBUGjj
-			cout.precision(10);
-			cout << "LogProb delta:" << logProb - oldLogProb << endl;
-			cout.precision(5);
+#ifdef DEBUG
+			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
 #endif
 
 			// 7. To iterate or not to iterate, that is the question :)
 
 			++iters;
-			if (iters < maxIters && logProb > oldLogProb) {
-				oldLogProb = logProb;
-				continue;
-			}
-			break;
 		}
+		while (iters < maxIters && logProb-eps > oldLogProb);
 
 #ifdef DEBUG
 		cout << "learnModel ended after iteration " << iters << endl;
+		std::cerr << iters << endl;
 #endif
 
 	}
 
 	void printState() {
-		cout << std::fixed << std::setprecision(5);
 
 		// print A
 		cout << "A:" << endl;

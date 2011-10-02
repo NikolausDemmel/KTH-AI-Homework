@@ -86,5 +86,33 @@ string movementToString(int m) {
 }
 
 
+void timeout_handler (int i) {
+	gTimeout = true;
+}
+
+void check_timeout() {
+	if(gTimeout) {
+		throw timeout_exception();
+	}
+}
+
+void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff) const
+{
+    int64_t lDiff=pUntil.mTime-pNow.Get();
+    if(lDiff<=0)
+    {
+        pDiff.it_value.tv_sec=0;
+        pDiff.it_value.tv_usec=0;
+    }
+    else
+    {
+        pDiff.it_value.tv_sec=lDiff/1000000;
+        pDiff.it_value.tv_usec=lDiff%1000000;
+    }
+    pDiff.it_interval.tv_sec = 0;
+    pDiff.it_interval.tv_usec = 0;
+}
+
+
 };
 

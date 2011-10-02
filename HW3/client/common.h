@@ -13,6 +13,10 @@
 #include <functional>
 #include <string>
 #include <boost/foreach.hpp>
+#include <cstdlib>
+#include <signal.h>
+#include <sys/time.h>
+#include <exception>
 
 
 #define DEBUG
@@ -50,6 +54,26 @@ const char* actionToShortString(EAction a);
 std::string movementToString(int m);
 
 
+
+// TIMEOUT
+class timeout_exception: public std::exception
+{
+public:
+	virtual const char* what() const throw()
+	{
+		return "Timeout";
+	}
+};
+
+static bool gTimeout = false;
+
+void timeout_handler (int i);
+
+void check_timeout();
+
+
+
+void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDiff) const;
 
 };
 
