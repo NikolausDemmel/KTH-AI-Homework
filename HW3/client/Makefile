@@ -14,13 +14,19 @@ client: *.cc *.h
 run: build
 	./client $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
+test:
+	for i in {1..100} ; do $(MAKE) run | grep "good guess"; done | wc -l
+
 build-opt: client-opt
 
 client-opt: *.cc *.h
-	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -o client-opt *.cc
+	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -DBOOST_UBLAS_NDEBUG -o client-opt *.cc
 
 run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
+
+test-opt:
+	for i in {1..100} ; do $(MAKE) run-opt | grep "wrong"; done | wc -l
 
 clean:
 	rm -f client
