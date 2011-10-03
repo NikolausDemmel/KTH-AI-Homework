@@ -53,7 +53,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	if(pState.GetNumDucks() == 1)
 		return PracticeModeShoot(pState, pDue);
 
-	/*
+
 	if (mFirstTime == true)
 		Initialize(pState);
 
@@ -65,34 +65,28 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	cout << "ROUND: " << mRound << endl;
 #endif
 
-	static bool stillWaiting = true;
-
 	if (mRound < 100) {
 		cout << "Too little info. Don't shoot" << endl;
 		return cDontShoot;
 	}
 
-	if (stillWaiting) {
-		stillWaiting = false;
-		newTurns = mRound;
-	}
-
-#ifdef DEBUGfaegsr
-	cout << "New turns: " << newTurns << endl;
-#endif
-
 	try
 	{
 		EnableTimer(pDue);
+
+		bool verbose = true;
 		for (int i = 0; i < mState->GetNumDucks(); ++i) {
-			mDuckInfo[i].update(newTurns);
+			if (i == 5) verbose = false;
+			mDuckInfo[i].update(verbose);
 		}
 		mDuckInfo[0].getModel().printState();
+		mDuckInfo[1].getModel().printState();
+
 		DisableTimer();
 	}
 	catch(std::exception &e) {
 		cout << "Exception: " << e.what() << endl;
-	}*/
+	}
 
 	cout << "Failsafe: Don't shoot." << endl;
 	return cDontShoot;
@@ -102,40 +96,34 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 {
 	cout << "PRACTICE MODE" << endl << endl;
 
-
 	HMM<3,9, DuckObservation> duck_model(DuckObservation::getSplitNames());
-
 	const CDuck &duck = pState.GetDuck(0);
-
 	int T = duck.GetSeqLength();
 
+#ifdef DEBUG
 	cout << "T = " << T << endl;
+#endif
 
 	std::vector<DuckObservation> obs;
-	for (int t = 0; t < T; ++t) {
+	for (int t = 300; t < T; ++t) {
 		obs.push_back(DuckObservation(duck.GetAction(t)));
 	}
-
-//	duck_model.printState();
-
 	duck_model.setObservations(&obs);
 
 	try {
 		EnableTimer(pDue);
-		duck_model.learnModel();
+		duck_model.learnModel(200, 	true);
 		DisableTimer();
 	}
 	catch (timeout_exception &e) {
 		cout << e.what() << endl;
 	}
 
-//	duck_model.check_differences();
-
 #ifdef DEBUG
 	duck_model.printState();
 #endif
 
-	return duck_model.predictNext().toAction();
+	return duck_model.predictNextObs().toAction();
 }
 
 

@@ -9,6 +9,7 @@
 #define HMM_H_
 
 #include "common.h"
+#include "hmmutils.h"
 #include <cassert>
 #include <limits>
 #include <list>
@@ -20,7 +21,6 @@
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/io.hpp>
 
-
 using namespace boost::numeric::ublas;
 using std::cout;
 using std::endl;
@@ -30,6 +30,10 @@ using std::list;
 using std::pair;
 using std::string;
 
+
+// #define HMM_UBLAS_IMPL
+
+
 namespace ducks {
 
 
@@ -38,29 +42,199 @@ class HMM {
 public:
 
 	HMM(std::vector<list<string>> obs_split_names = std::vector<list<string>>()):
-		obs_names(obs_split_names)
+		obs_names(obs_split_names),
+		model(),
+		A(model.A),
+		B(model.B),
+		pi(model.pi)
 	{
-		set1();
 		standardInitialization();
-		A2 = A1;
-		B2 = B1;
-		pi2 = pi1;
+	}
+
+	HMM(const HMM& obj):
+		c(obj.c),
+		alpha(obj.alpha),
+		beta(obj.beta),
+		gamma(obj.gamma),
+		bigamma(obj.bigamma),
+		model(obj.model),
+		A(model.A),  // This is the
+		B(model.B),  // relevant
+		pi(model.pi),// part !
+		obs_names(obj.obs_names),
+		B_split(obj.B_split),
+		T(obj.T),
+		obs(obj.obs) // point to the same observation list
+	{
+	}
+
+	HMM& operator=(const HMM& rhs)
+	{
+		c = rhs.c;
+		alpha = rhs.alpha;
+		beta = rhs.beta;
+		gamma = rhs.gamma;
+		bigamma = rhs.bigamma;
+
+		model = rhs.model;
+		// dont need to copy A, B and pi !
+
+		obs_names = rhs.obs_names;
+		B_split = rhs.B_split;
+
+		T = rhs.T;
+		obs = rhs.obs; // point the same observation list
+
+		return *this;
 	}
 
 	void standardInitialization() {
+		prob nth = 1.0/N;
+		prob mth = 1.0/M;
+
+		// A & B
 		for(int i = 0; i < N; ++i) {
-			(*pi)[i] = 1.0/N + random_delta<prob>(1.0/N);
+
+			// A row
 			for(int j = 0; j < N; ++j) {
-				(*A)(i,j) = 1.0/N + random_delta<prob>(1.0/N);
+				if (i == j)
+					A(i,j) = 0.5;  // stay in same state with 50% prob
+				else
+					A(i,j) = roughly(nth/2.0);
 			}
-			row((*A),i) /= sum(row((*A),i));
+			normalize(row(A,i));
+
+			// B row
 			for(int j = 0; j < M; ++j) {
-				(*B)(i,j) = 1.0/M + random_delta<prob>(1.0/M);
+				B(i,j) = roughly(mth);
 			}
-			row((*B),i) /= sum(row((*B),i));
+			normalize(row(B,i));
 		}
-		(*pi) /= sum((*pi));
+
+		// PI
+		for (int i = 0; i < N; ++i) {
+			if (i == 0)
+				pi[i] = 0.75; // give preference to this first state.
+			else
+				pi[i] = roughly(nth/4.0);
+		}
+		normalize(pi);
 	}
+
+	observation predictNextObs() {
+		c_vector<prob, M> obs_dist = prod(alpha[T-1],B);
+		return observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
+	}
+
+#ifndef HMM_UBLAS_IMPL
+
+	void alphaPass() {
+		// compute alpha(0)
+		c[0] = 0;
+		for (int i = 0; i < N; ++i) {
+			alpha[0][i] = pi[i]*B(i,(*obs)[0]);
+			c[0] += alpha[0][i];
+		}
+
+		// scale alpha(0,i)
+		c[0] = 1/c[0];
+		for (int i = 0; i < N; ++i) {
+			alpha[0][i] *= c[0];
+		}
+
+		// compute alpha(t,i)
+		for (int t = 1; t < T; ++t) {
+			c[t] = 0;
+			for (int i = 0; i < N; ++i) {
+				alpha[t][i] = 0;
+				for (int j = 0; j < N; ++j) {
+					alpha[t][i] += alpha[t-1][j]*A(j,i);
+				}
+				alpha[t][i] *= B(i,(*obs)[t]);
+				c[t] += alpha[t][i];
+			}
+
+			// scale alpha(t,i)
+			c[t] = 1/c[t];
+			for (int i = 0; i < N; ++i) {
+				alpha[t][i] *= c[t];
+			}
+		}
+	}
+
+	void betaPass() {
+		// let beta(T-1,i) = 1 scaled by c(T-1)
+		for (int i = 0; i < N; ++i) {
+			beta[T-1][i] = c[T-1];
+		}
+
+		// beta pass
+		for (int t = T-2; t >= 0; --t) {
+			for (int i = 0; i < N; ++i) {
+				beta[t][i] = 0;
+				for (int j = 0; j < N; ++j) {
+					beta[t][i] += A(i,j)*B(j,(*obs)[t+1])*beta[t+1][j];
+				}
+				// scale beta(t,i) with same factor as alpha(t,i)
+				beta[t][i] *= c[t];
+			}
+		}
+	}
+
+	void gammaPass() {
+		for (int t = 0; t < T-1; ++t) {
+			prob denom = 0;
+			for (int i = 0; i < N; ++i) {
+				for (int j = 0; j < N; ++j) {
+					denom += alpha[t][i]*A(i,j)*B(j,(*obs)[t+1])*beta[t+1][j];
+				}
+			}
+			for (int i = 0; i < N; ++i) {
+				gamma[t][i] = 0;
+				for (int j = 0; j < N; ++j) {
+					bigamma[t](i,j) = (alpha[t][i]*A(i,j)*B(j,(*obs)[t+1])*beta[t+1][j]) / denom;
+					gamma[t][i] += bigamma[t](i,j);
+				}
+			}
+		}
+	}
+
+	void reestimateModel() {
+		// re-estimate pi
+		for (int i = 0; i < N; ++i) {
+			pi[i] = gamma[0][i];
+		}
+
+		// re-estimate A
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < N; ++j) {
+				prob numer = 0;
+				prob denom = 0;
+				for (int t = 0; t < T-1; ++t) {
+					numer += bigamma[t](i,j);
+					denom += gamma[t][i];
+				}
+				A(i,j) = numer/denom;
+			}
+		}
+
+		// re-estimate B
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < M; ++j) {
+				prob numer = 0;
+				prob denom = 0;
+				for (int t = 0; t < T-1; ++t) {
+					if ((*obs)[t] == j) {
+						numer += gamma[t][i];
+					}
+					denom += gamma[t][i];
+				}
+				B(i,j) = numer/denom;
+			}
+		}
+	}
+
+#endif
 
 	bool validObservations() const {
 		if (T > obs->size() || T < 0)
@@ -77,193 +251,28 @@ public:
 		obs = obs_;
 	}
 
-	void set1() {
-		c = &c1;
-		alpha = &alpha1;
-		beta = &beta1;
-		gamma = &gamma1;
-		bigamma = &bigamma1;
-		A = &A1;
-		B = &B1;
-		pi = &pi1;
+	void addNoiseToModel(prob noise = 0.0001) {
+		addNoise(pi,noise);
+		addNoise<N,N>(A,noise);
+		addNoise<N,M>(B,noise);
 	}
 
-	void set2() {
-		c = &c2;
-		alpha = &alpha2;
-		beta = &beta2;
-		gamma = &gamma2;
-		bigamma = &bigamma2;
-		A = &A2;
-		B = &B2;
-		pi = &pi2;
+	void resizeVectors() {
+		c.resize(T);
+		alpha.resize(T);
+		beta.resize(T);
+		gamma.resize(T);
+		bigamma.resize(T);
 	}
 
-	observation predictNext() {
-		c_vector<prob, M> obs_dist = prod((*alpha)[T-1],(*B));
-		return observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
+	void learningPhase() {
+		alphaPass();
+		betaPass();
+		gammaPass();
+		reestimateModel();
 	}
 
-	void alphaPass() {
-		noalias((*alpha)[0]) = element_prod((*pi),column((*B),(*obs)[0]));
-		(*c)[0] = 1 / sum((*alpha)[0]);
-		(*alpha)[0] *= (*c)[0];
-
-		for (int t = 1; t < T; ++t) {
-			noalias((*alpha)[t]) = element_prod(prod((*alpha)[t-1], (*A)), column((*B),(*obs)[t]));
-			(*c)[t] = 1 / sum((*alpha)[t]);
-			(*alpha)[t] *= (*c)[t];
-		}
-	}
-
-	void alphaPassLoopy() {
-		// compute alpha(0)
-		(*c)[0] = 0;
-		for (int i = 0; i < N; ++i) {
-			(*alpha)[0][i] = (*pi)[i]*(*B)(i,(*obs)[0]);
-			(*c)[0] += (*alpha)[0][i];
-		}
-
-		// scale alpha(0,i)
-		(*c)[0] = 1/(*c)[0];
-		for (int i = 0; i < N; ++i) {
-			(*alpha)[0][i] *= (*c)[0];
-		}
-
-		// compute alpha(t,i)
-		for (int t = 1; t < T; ++t) {
-			(*c)[t] = 0;
-			for (int i = 0; i < N; ++i) {
-				(*alpha)[t][i] = 0;
-				for (int j = 0; j < N; ++j) {
-					(*alpha)[t][i] += (*alpha)[t-1][j]*(*A)(j,i);
-				}
-				(*alpha)[t][i] *= (*B)(i,(*obs)[t]);
-				(*c)[t] += (*alpha)[t][i];
-			}
-
-			// scale alpha(t,i)
-			(*c)[t] = 1/(*c)[t];
-			for (int i = 0; i < N; ++i) {
-				(*alpha)[t][i] *= (*c)[t];
-			}
-		}
-	}
-
-	void betaPass() {
-		noalias((*beta)[T-1]) = scalar_vector<prob>(N, (*c)[T-1]);
-
-		for (int t = T-2; t >= 0; --t) {
-			noalias((*beta)[t]) = prod((*A), element_prod(column((*B),(*obs)[t+1]), (*beta)[t+1])) * (*c)[t];
-		}
-	}
-
-	void betaPassLoopy() {
-		// let beta(T-1,i) = 1 scaled by c(T-1)
-		for (int i = 0; i < N; ++i) {
-			(*beta)[T-1][i] = (*c)[T-1];
-		}
-
-		// beta pass
-		for (int t = T-2; t >= 0; --t) {
-			for (int i = 0; i < N; ++i) {
-				(*beta)[t][i] = 0;
-				for (int j = 0; j < N; ++j) {
-					(*beta)[t][i] += (*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j];
-				}
-				// scale beta(t,i) with same factor as alpha(t,i)
-				(*beta)[t][i] *= (*c)[t];
-			}
-		}
-	}
-
-	void gammaPass() {
-		for (int t = 0; t < T-1; ++t) {
-
-			noalias((*bigamma)[t]) =
-				element_prod((*A), outer_prod((*alpha)[t],
-										   element_prod(column((*B),(*obs)[t+1]),
-												   	    (*beta)[t+1])));
-			(*bigamma)[t] /= sum(prod(scalar_vector<prob>(N, 1.0), (*bigamma)[t]));
-			noalias((*gamma)[t]) = prod((*bigamma)[t], scalar_vector<prob>(N,1));
-		}
-	}
-
-	void gammaPassLoopy() {
-		for (int t = 0; t < T-1; ++t) {
-			prob denom = 0;
-			for (int i = 0; i < N; ++i) {
-				for (int j = 0; j < N; ++j) {
-					denom += (*alpha)[t][i]*(*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j];
-				}
-			}
-			for (int i = 0; i < N; ++i) {
-				(*gamma)[t][i] = 0;
-				for (int j = 0; j < N; ++j) {
-					(*bigamma)[t](i,j) = ((*alpha)[t][i]*(*A)(i,j)*(*B)(j,(*obs)[t+1])*(*beta)[t+1][j]) / denom;
-					(*gamma)[t][i] += (*bigamma)[t](i,j);
-				}
-			}
-		}
-	}
-
-	void reestimateModel() {
-		// re-estimate pi
-		(*pi) = (*gamma)[0];
-
-		// re-estimate A
-		(*A).clear();
-		state_dist_t gammasum;
-		for (int t = 0; t < T; ++t) {
-			(*A) += (*bigamma)[t];
-			gammasum += (*gamma)[t];
-		}
-		(*A) = element_div((*A), outer_prod(gammasum, scalar_vector<prob>(N,1)));
-
-		// re-estimate B
-		(*B).clear();
-		for (int t = 0; t < T-1; ++t) {
-			noalias(column((*B),(*obs)[t])) += (*gamma)[t];
-		}
-		(*B) = element_div((*B), outer_prod(gammasum-(*gamma)[T-1], scalar_vector<prob>(M,1)));
-	}
-
-	void reestimateModelLoopy() {
-		// re-estimate pi
-		for (int i = 0; i < N; ++i) {
-			(*pi)[i] = (*gamma)[0][i];
-		}
-
-		// re-estimate A
-		for (int i = 0; i < N; ++i) {
-			for (int j = 0; j < N; ++j) {
-				prob numer = 0;
-				prob denom = 0;
-				for (int t = 0; t < T-1; ++t) {
-					numer += (*bigamma)[t](i,j);
-					denom += (*gamma)[t][i];
-				}
-				(*A)(i,j) = numer/denom;
-			}
-		}
-
-		// re-estimate B
-		for (int i = 0; i < N; ++i) {
-			for (int j = 0; j < M; ++j) {
-				prob numer = 0;
-				prob denom = 0;
-				for (int t = 0; t < T-1; ++t) {
-					if ((*obs)[t] == j) {
-						numer += (*gamma)[t][i];
-					}
-					denom += (*gamma)[t][i];
-				}
-				(*B)(i,j) = numer/denom;
-			}
-		}
-	}
-
-	void learnModel(int maxIters = 1000, int T_ = -1) {
+	void learnModel(int maxIters = 200, bool verbose = false, int T_ = -1) {
 		if (T_ < 0)
 			T = obs->size();
 		else
@@ -281,24 +290,12 @@ public:
 		////////////////
 		// 1. Initialization
 
-		prob eps = 1e-5; // FIXME: this is arbitrary
+		prob eps = 1e-7; // FIXME: this is arbitrary
 		int iters = 0;
 		prob logProb = -numeric_limits<prob>::max();
 		prob oldLogProb = 0;
 
-		c1.resize(T);
-		alpha1.resize(T);
-		beta1.resize(T);
-		gamma1.resize(T);
-		bigamma1.resize(T);
-
-//		c2.resize(T);
-//		alpha2.resize(T);
-//		beta2.resize(T);
-//		gamma2.resize(T);
-//		bigamma2.resize(T);
-
-//		check_differences();
+		resizeVectors();
 
 		do
 		{
@@ -308,67 +305,68 @@ public:
 #ifdef DEBUGdd
 			cout << "ITERATION " << iters << endl << endl;
 #endif
-			////////////////
-			// 2. alpha pass
-			set1();
-//			alphaPass();
 
-//			set2();
-			alphaPassLoopy();
+			addNoiseToModel();
+
+			learningPhase();
 
 			////////////////
-			// 3. beta pass
-			set1();
-//			betaPass();
-
-//			set2();
-			betaPassLoopy();
-
-			////////////////
-			// 4. compute bi_gamma and gamma
-			set1();
-//			gammaPass();
-
-//			set2();
-			gammaPassLoopy();
-
-			////////////////
-			// 5. re-estimate A, B and pi
-			set1();
-//			reestimateModel();
-
-//			set2();
-			reestimateModelLoopy();
-
-			////////////////
-			// 6. compute log[P(O|lambda)]
-
-//			check_differences();
-			//printState();
-
-			set1();
+			// Compute log[P(O|lambda)]
 			logProb = 0;
 			for (int t = 0; t < T; ++t) {
-				logProb += log2((*c)[t]);
+				logProb -= log2(c[t]);
 			}
-			logProb = -logProb;
 
 #ifdef DEBUGdd
 			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
 #endif
 
-			// 7. To iterate or not to iterate, that is the question :)
-
 			++iters;
 		}
 		while (iters < maxIters && logProb - eps > oldLogProb);
 
-#ifdef DEBUGdd
-		cout << "learnModel ended after iteration " << iters << endl;
-		std::cerr << iters << endl;
+#ifdef DEBUG
+		if (verbose) {
+			std::cerr << "learnModel ended after iteration " << iters << endl;
+		}
 #endif
 
 	}
+
+
+
+public:
+	typedef c_vector<prob, N> state_dist_t;
+	typedef c_matrix<prob, N, N> state_state_trans_t;
+	typedef c_matrix<prob, N, M> state_obs_trans_t;
+
+	struct model_t {
+		state_state_trans_t A;
+		state_obs_trans_t B;
+		state_dist_t pi;
+	};
+
+	vector<prob> c;
+	vector<state_dist_t> alpha;
+	vector<state_dist_t> beta;
+	vector<state_dist_t> gamma;
+	vector<state_state_trans_t> bigamma;
+
+	model_t model;
+
+	state_state_trans_t &A;
+	state_obs_trans_t &B;
+	state_dist_t &pi;
+
+	std::vector<list<string>> obs_names;
+	std::vector<matrix<prob>> B_split;
+
+	int T;
+	std::vector<observation> *obs;
+
+
+
+public:
 
 	void printState() {
 
@@ -376,7 +374,7 @@ public:
 		cout << "A:" << endl;
 		for (int i = 0; i < N; ++i) {
 			for (int j = 0; j < N; ++j) {
-				cout << exp((*A)(i,j)) << " ";
+				cout << A(i,j) << " ";
 			}
 			cout << endl;
 		}
@@ -389,7 +387,7 @@ public:
 		cout << endl;
 		for (int i = 0; i < N; ++i) {
 			for (int j = 0; j < M; ++j) {
-				cout << exp((*B)(i,j)) << " ";
+				cout << B(i,j) << " ";
 			}
 			cout << endl;
 		}
@@ -397,7 +395,7 @@ public:
 		// print pi
 		cout << endl << "pi: " << endl;
 		for (int i = 0; i < N; ++i) {
-			cout << exp((*pi)[i]) << " ";
+			cout << pi[i] << " ";
 		}
 		cout << endl << endl;
 
@@ -424,7 +422,7 @@ public:
 				mat.clear();
 				for (int i = 0; i < N; ++i) {
 					for (int j = 0; j < M; ++j) {
-						mat(i, (j/factor) % m) += (*B)(i,j);
+						mat(i, (j/factor) % m) += B(i,j);
 					}
 				}
 				factor *= m;
@@ -458,110 +456,69 @@ public:
 		}
 	}
 
-	template<class T>
-	void check_difference_many_abs(const string name, const vector<T> &a, const vector<T> &b) const {
-		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		prob diff = 0;
-		for (int i = 0; i < a.size(); ++i) {
-			diff += abs(a[i] - b[i]);
+///////////////////////////////////////////////////////////////////////////////
+// UBLAS IMPLEMENTATION
+//////////////////////////////////////////////////////////////////////////////
+
+#ifdef HMM_UBLAS_IMPL
+
+	void alphaPass() {
+		noalias(alpha[0]) = element_prod(pi,column(B,(*obs)[0]));
+		c[0] = 1 / sum(alpha[0]);
+		alpha[0] *= c[0];
+
+		for (int t = 1; t < T; ++t) {
+			noalias(alpha[t]) = element_prod(prod(alpha[t-1], A), column(B,(*obs)[t]));
+			c[t] = 1 / sum(alpha[t]);
+			alpha[t] *= c[t];
 		}
-		diff /= a.size();
-		cout << diff;
 	}
 
-	template<class T>
-	void check_difference_many_norm1(const string name, const vector<T> &a, const vector<T> &b) const {
-		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		prob diff = 0;
-		for (int i = 0; i < a.size(); ++i) {
-			diff += norm_1(a[i] - b[i]);
+	void betaPass() {
+		noalias(beta[T-1]) = scalar_vector<prob>(N, c[T-1]);
+
+		for (int t = T-2; t >= 0; --t) {
+			noalias(beta[t]) = prod(A, element_prod(column(B,(*obs)[t+1]), beta[t+1])) * c[t];
 		}
-		diff /= a.size();
-		cout << diff;
 	}
 
-	template<class T>
-	void check_difference_many_norm2(const string name, const vector<T> &a, const vector<T> &b) const {
-		cout << name << "(" << a.size() << "," << b.size() << "): ";
-		prob diff = 0;
-		for (int i = 0; i < a.size(); ++i) {
-			diff += norm_2(a[i] - b[i]);
+	void gammaPass() {
+		for (int t = 0; t < T-1; ++t) {
+
+			noalias(bigamma[t]) =
+				element_prod(A, outer_prod(alpha[t],
+										   element_prod(column(B,(*obs)[t+1]),
+												   	    beta[t+1])));
+			bigamma[t] /= sum(prod(scalar_vector<prob>(N, 1.0), bigamma[t]));
+			noalias(gamma[t]) = prod(bigamma[t], scalar_vector<prob>(N,1));
 		}
-		diff /= a.size();
-		cout << diff;
 	}
 
-	template<class T>
-	void check_difference_one_norm1(const string name, const T &a, const T &b) const {
-		cout << name << ": " << norm_1(a - b);
+	void reestimateModel() {
+		// re-estimate pi
+		pi = gamma[0];
+
+		// re-estimate A
+		A.clear();
+		state_dist_t gammasum;
+		for (int t = 0; t < T; ++t) {
+			A += bigamma[t];
+			gammasum += gamma[t];
+		}
+		A = element_div(A, outer_prod(gammasum, scalar_vector<prob>(N,1)));
+
+		// re-estimate B
+		B.clear();
+		for (int t = 0; t < T-1; ++t) {
+			noalias(column(B,(*obs)[t])) += gamma[t];
+		}
+		B = element_div(B, outer_prod(gammasum-gamma[T-1], scalar_vector<prob>(M,1)));
 	}
 
-	template<class T>
-	void check_difference_one_norm2(const string name, const T &a, const T &b) const {
-		cout << name << ": " << norm_2(a - b);
-	}
+#endif
 
-	void check_differences() const {
-		cout << "Checking differences:" << endl;
-		check_difference_many_abs("c", c1, c2);
-		cout << endl;
-		check_difference_many_norm2("alpha", alpha1, alpha2);
-		cout << endl;
-		check_difference_many_norm2("beta", beta1, beta2);
-		cout << endl;
-		check_difference_many_norm2("gamma", gamma1, gamma2);
-		cout << endl;
-		check_difference_many_norm1("bigamma", bigamma1, bigamma2);
-		cout << endl;
 
-		check_difference_one_norm1("A", A1, A2);
-		cout << endl;
-		check_difference_one_norm1("B", B1, B2);
-		cout << endl;
-		check_difference_one_norm2("pi", pi1, pi2);
-		cout << endl;
-	}
 
-public:
-	typedef c_vector<prob, N> state_dist_t;
-	typedef c_matrix<prob, N, N> state_state_trans_t;
-	typedef c_matrix<prob, N, M> state_obs_trans_t;
-
-	vector<prob> *c;
-	vector<state_dist_t> *alpha;
-	vector<state_dist_t> *beta;
-	vector<state_dist_t> *gamma;
-	vector<state_state_trans_t> *bigamma;
-
-	state_state_trans_t *A;
-	state_obs_trans_t *B;
-	state_dist_t *pi;
-
-	vector<prob> c1;
-	vector<state_dist_t> alpha1;
-	vector<state_dist_t> beta1;
-	vector<state_dist_t> gamma1;
-	vector<state_state_trans_t> bigamma1;
-
-	state_state_trans_t A1;
-	state_obs_trans_t B1;
-	state_dist_t pi1;
-
-	vector<prob> c2;
-	vector<state_dist_t> alpha2;
-	vector<state_dist_t> beta2;
-	vector<state_dist_t> gamma2;
-	vector<state_state_trans_t> bigamma2;
-
-	state_state_trans_t A2;
-	state_obs_trans_t B2;
-	state_dist_t pi2;
-
-	std::vector<list<string>> obs_names;
-	std::vector<matrix<prob>> B_split;
-
-	int T;
-	std::vector<observation> *obs;
 };
 
 

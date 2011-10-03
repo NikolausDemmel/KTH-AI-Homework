@@ -47,6 +47,12 @@ real random_delta(real number, real fraction = 0.2) {
 	return dist(engine);
 }
 
+template<class real = double>
+real random(real lower = 0, real upper = 1) {
+	std::uniform_real_distribution<> dist(lower, upper);
+	return dist(engine);
+}
+
 
 // STRING CONVERSIONS
 const char* speciesToString(ESpecies s);

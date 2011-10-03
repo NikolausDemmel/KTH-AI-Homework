@@ -36,21 +36,14 @@ public:
 		mDuck = duck;
 	}
 
-	void update(int newTurns)
+	void update(bool verbose)
 	{
 		int n = mObs.size();
-		for (int i = n; i < n + newTurns; ++i) {
+		for (int i = n; i < mDuck->GetSeqLength(); ++i) {
 			mObs.push_back(mDuck->GetAction(i));
 		}
 
-		// Sanity check
-#ifdef DEBUG
-		if (mObs.size() != mDuck->GetSeqLength()) {
-			throw std::runtime_error("FOOOOOOO!");
-		}
-#endif
-
-		mModel.learnModel(10);
+		mModel.learnModel(10, verbose);
 	}
 
 	hmm_t& getModel() {
@@ -62,6 +55,8 @@ private:
 	std::vector<DuckObservation> mObs;
 	const CDuck *mDuck;
 	hmm_t mModel;
+
+	//std::vector<hmm_t::model_t> mAllModels;
 };
 
 
