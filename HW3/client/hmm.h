@@ -15,6 +15,7 @@
 #include <list>
 #include <iomanip>
 #include <algorithm>
+#include <fstream>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -23,13 +24,18 @@
 
 using namespace boost::numeric::ublas;
 using std::cout;
+using std::cerr;
 using std::endl;
 using std::setw;
 using std::numeric_limits;
 using std::list;
 using std::pair;
 using std::string;
+using std::fstream;
 
+
+#define DEBUG_FILE "./output.csv"
+#define DEBUG_LOG
 
 // #define HMM_UBLAS_IMPL
 
@@ -37,8 +43,35 @@ using std::string;
 namespace ducks {
 
 
-template<int N, int M, class observation, class prob = double>
+typedef double prob;
+
+
+template<int N, int M, class observation>
 class HMM {
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// TYPES
+	///////////////////////////////////////////////////////////////////////////
+
+public:
+
+	typedef HMM<N, M, observation> self_t;
+
+	typedef c_vector<prob, N> state_dist_t;
+	typedef c_matrix<prob, N, N> state_state_trans_t;
+	typedef c_matrix<prob, N, M> state_obs_trans_t;
+
+	struct model_t {
+		state_state_trans_t A;
+		state_obs_trans_t B;
+		state_dist_t pi;
+	};
+
+	///////////////////////////////////////////////////////////////////////////
+	// INITIALIZATION
+	///////////////////////////////////////////////////////////////////////////
+
 public:
 
 	HMM(std::vector<list<string>> obs_split_names = std::vector<list<string>>()):
@@ -49,6 +82,14 @@ public:
 		pi(model.pi)
 	{
 		standardInitialization();
+	}
+
+	HMM(const model_t &model_):
+		model(model_),
+		A(model.A),
+		B(model.B),
+		pi(model.pi)
+	{
 	}
 
 	HMM(const HMM& obj):
@@ -88,7 +129,7 @@ public:
 		return *this;
 	}
 
-	void standardInitialization() {
+	void standardInitialization(bool uniform = false) {
 		prob nth = 1.0/N;
 		prob mth = 1.0/M;
 
@@ -97,7 +138,7 @@ public:
 
 			// A row
 			for(int j = 0; j < N; ++j) {
-				if (i == j)
+				if (i == j && uniform == false)
 					A(i,j) = 0.5;  // stay in same state with 50% prob
 				else
 					A(i,j) = roughly(nth/2.0);
@@ -113,7 +154,7 @@ public:
 
 		// PI
 		for (int i = 0; i < N; ++i) {
-			if (i == 0)
+			if (i == 0 && uniform == false)
 				pi[i] = 0.75; // give preference to this first state.
 			else
 				pi[i] = roughly(nth/4.0);
@@ -121,14 +162,32 @@ public:
 		normalize(pi);
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// HMM - ALGORITHMS
+	///////////////////////////////////////////////////////////////////////////
+
+	void generateSequence(const model_t &model, std::vector<observation> &seq, int length) {
+		seq.clear();
+
+		int state = sample(model.pi);
+		seq.push_back(sample(model.B, state));
+
+		for(int t = 1; t < length; ++t) {
+			state = sample(model.A, state);
+			seq.push_back(sample(model.B, state));
+		}
+	}
+
 	observation predictNextObs() {
 		c_vector<prob, M> obs_dist = prod(alpha[T-1],B);
+		cerr << "best observation prob: " << *std::max_element(obs_dist.begin(),obs_dist.end()) << endl;
 		return observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
 	}
 
 #ifndef HMM_UBLAS_IMPL
 
 	void alphaPass() {
+
 		// compute alpha(0)
 		c[0] = 0;
 		for (int i = 0; i < N; ++i) {
@@ -236,6 +295,134 @@ public:
 
 #endif
 
+	prob sumLogScaleFactors() {
+		prob sum = 0;
+		for (int t = 0; t < T; ++t) {
+			sum -= log(c[t]);
+		}
+		return sum;
+	}
+
+	prob logProbability(std::vector<observation>* observations) {
+		int T_ = T;
+		auto obs_ = obs;
+
+		obs = observations;
+		T = obs->size();
+
+		alpha.resize(T);
+		c.resize(T);
+
+		alphaPass();
+		prob p = sumLogScaleFactors();
+
+		T = T_;
+		obs = obs_;
+
+		return p;
+	}
+
+	void learningPhase() {
+		alphaPass();
+		betaPass();
+		gammaPass();
+		reestimateModel();
+	}
+
+	void learnModel(int maxIters = 200, bool verbose = false, int fixedNumIters = 0) {
+		T = obs->size();
+		assert(validObservations());
+
+#ifdef DEBUGdd
+		cout << "learnModel call with T = " << T << " observations: " << endl;
+		for (int t = 0; t < obs->size(); ++t) {
+			cout << (*obs)[t].str() << " ";
+		}
+		cout << endl;
+#endif
+
+#ifdef DEBUG_LOG
+		fstream logger(DEBUG_FILE, fstream::out);
+#endif
+
+		////////////////
+		// 1. Initialization
+
+		prob eps = 1e-5; // FIXME: this is arbitrary
+		int iters = 0;
+		prob logProb = -numeric_limits<prob>::max();
+		prob oldLogProb = 0;
+
+		resizeVectors();
+
+		bool abort = false;
+		double noise = 0;
+
+
+		do
+		{
+			oldLogProb = logProb;
+			check_timeout();
+
+#ifdef DEBUGdd
+			cout << "ITERATION " << iters << endl << endl;
+#endif
+
+			const double steepness = 5; // bigger values mean more extreme curve
+			const double linearfraction = 0.4;
+			const double startingnoise = 0.1;
+			const double middlenoise = 0.001;
+			double delay = fixedNumIters*linearfraction;
+			if (iters < delay) {
+				noise = ((startingnoise-middlenoise)*(delay - iters)/delay) + middlenoise;
+			} else {
+				noise = ((exp(steepness - ((iters-delay)/((fixedNumIters-delay)/(steepness))) ) - 1) /
+						 (exp(steepness) - 1)) *
+						middlenoise;
+
+			}
+			addNoiseToModel(noise);
+
+			learningPhase();
+
+			// Compute log[P(O|lambda)]
+			logProb = sumLogScaleFactors();
+
+#ifdef DEBUGdd
+			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
+#endif
+
+			++iters;
+
+#ifdef DEBUG_LOG
+			logger << iters << ";" << logProb << ";" << noise << endl;
+#endif
+
+			if (fixedNumIters > 0) {
+				abort = iters >= fixedNumIters;
+				static bool foo = true;
+				if (foo && logProb - eps <= oldLogProb) {
+					cout << "abort rule at: " << iters << endl;
+					foo = false;
+				}
+			} else
+				abort = iters >= maxIters || logProb - eps <= oldLogProb;
+		}
+		while (!abort);
+
+#ifdef DEBUG
+		if (verbose) {
+			std::cerr << "learnModel ended after iteration " << iters
+					  << " with logProb of " << logProb << endl;
+		}
+#endif
+
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// UTILITIES
+	///////////////////////////////////////////////////////////////////////////
+
 	bool validObservations() const {
 		if (T > obs->size() || T < 0)
 			return false;
@@ -251,7 +438,7 @@ public:
 		obs = obs_;
 	}
 
-	void addNoiseToModel(prob noise = 0.0001) {
+	void addNoiseToModel(prob noise = 0.001) {
 		addNoise(pi,noise);
 		addNoise<N,N>(A,noise);
 		addNoise<N,M>(B,noise);
@@ -265,86 +452,39 @@ public:
 		bigamma.resize(T);
 	}
 
-	void learningPhase() {
-		alphaPass();
-		betaPass();
-		gammaPass();
-		reestimateModel();
+	prob simple_distance(model_t& other) {
+		return(manhatten_metric<N,N>(A, other.A) +
+			   manhatten_metric<N,M>(B, other.B) +
+			   manhatten_metric<N>(pi, other.pi));
 	}
 
-	void learnModel(int maxIters = 200, bool verbose = false, int T_ = -1) {
-		if (T_ < 0)
-			T = obs->size();
-		else
-			T = T_;
+	prob kullback_leibler_distance_sample(self_t &other, int num_seqs = 10, int length_seqs = 4000) {
+		std::vector<observation> seq;
 
-		assert(validObservations());
+		prob dist = 0;
 
-#ifdef DEBUGdd
-		cout << "learnModel call with T = " << T << " observations: " << endl;
-		for (int t = 0; t < obs->size(); ++t) {
-			cout << (*obs)[t].str() << " ";
+		for (int i = 0; i < num_seqs; ++i) {
+			generateSequence(model, seq, length_seqs);
+			dist += (logProbability(seq) - other.logProbability(seq)) / length_seqs;
 		}
-		cout << endl;
-#endif
-		////////////////
-		// 1. Initialization
 
-		prob eps = 1e-7; // FIXME: this is arbitrary
-		int iters = 0;
-		prob logProb = -numeric_limits<prob>::max();
-		prob oldLogProb = 0;
-
-		resizeVectors();
-
-		do
-		{
-			oldLogProb = logProb;
-			check_timeout();
-
-#ifdef DEBUGdd
-			cout << "ITERATION " << iters << endl << endl;
-#endif
-
-			addNoiseToModel();
-
-			learningPhase();
-
-			////////////////
-			// Compute log[P(O|lambda)]
-			logProb = 0;
-			for (int t = 0; t < T; ++t) {
-				logProb -= log2(c[t]);
-			}
-
-#ifdef DEBUGdd
-			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
-#endif
-
-			++iters;
-		}
-		while (iters < maxIters && logProb - eps > oldLogProb);
-
-#ifdef DEBUG
-		if (verbose) {
-			std::cerr << "learnModel ended after iteration " << iters << endl;
-		}
-#endif
+		return dist / num_seqs;
 
 	}
 
+	prob distance(self_t &other) {
 
+		prob dist = (logProbability(obs) - other.logProbability(obs));
 
-public:
-	typedef c_vector<prob, N> state_dist_t;
-	typedef c_matrix<prob, N, N> state_state_trans_t;
-	typedef c_matrix<prob, N, M> state_obs_trans_t;
+		return dist;
 
-	struct model_t {
-		state_state_trans_t A;
-		state_obs_trans_t B;
-		state_dist_t pi;
-	};
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// DATA
+	///////////////////////////////////////////////////////////////////////////
+
+private:
 
 	vector<prob> c;
 	vector<state_dist_t> alpha;
@@ -364,9 +504,17 @@ public:
 	int T;
 	std::vector<observation> *obs;
 
+public:
+	model_t& getModel() {
+		return model;
+	}
 
 
 public:
+
+	///////////////////////////////////////////////////////////////////////////
+	// PRINTING AND OTHERS
+	///////////////////////////////////////////////////////////////////////////
 
 	void printState() {
 

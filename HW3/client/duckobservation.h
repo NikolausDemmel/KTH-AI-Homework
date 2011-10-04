@@ -23,6 +23,8 @@ namespace ducks {
 class DuckObservation
 {
 public:
+	static const int numObservations = 9;
+
 	DuckObservation(const CAction& action)
 	{
 		mObs = action.GetHAction() + 3*action.GetVAction();

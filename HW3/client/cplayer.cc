@@ -65,7 +65,11 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	cout << "ROUND: " << mRound << endl;
 #endif
 
-	if (mRound < 100) {
+	for (int i = 0; i < mState->GetNumDucks(); ++i) {
+		mDuckInfo[i].iteration(mRound);
+	}
+
+	if (mRound < 50) {
 		cout << "Too little info. Don't shoot" << endl;
 		return cDontShoot;
 	}
@@ -96,7 +100,7 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 {
 	cout << "PRACTICE MODE" << endl << endl;
 
-	HMM<3,9, DuckObservation> duck_model(DuckObservation::getSplitNames());
+	HMM<3,DuckObservation::numObservations, DuckObservation> duck_model(DuckObservation::getSplitNames());
 	const CDuck &duck = pState.GetDuck(0);
 	int T = duck.GetSeqLength();
 
@@ -110,9 +114,12 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 	}
 	duck_model.setObservations(&obs);
 
+	/// FIXME: TEST
+	//duck_model.standardInitialization(true);
+
 	try {
 		EnableTimer(pDue);
-		duck_model.learnModel(200, 	true);
+		duck_model.learnModel(200, true, 1000);
 		DisableTimer();
 	}
 	catch (timeout_exception &e) {
@@ -129,17 +136,22 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 
 void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 {
-    /*
-     * Here you should write your clever algorithms to guess the species of each alive bird.
-     * This skeleton guesses that all of them are white... they were the most likely after all!
-     */
+	if(mState->GetNumDucks() == 1) // practice mode
+		return;
 
 #ifdef DEBUG
 	cout << "GUESSING" << endl;
 #endif
 
-	//mDuckInfo[0].getModel().printState();
-	//mDuckInfo[1].getModel().printState();
+	mDuckInfo[0].getModel().printState();
+	mDuckInfo[1].getModel().printState();
+
+	mDuckInfo[0].analyseDevelopment();
+
+	for (int i = 0; i < pDucks.size(); ++i) {
+		cout << "dist to " << i << ": " << std::setprecision(10) << mDuckInfo[0].currDistance(mDuckInfo[i]) << endl;
+		cout << "dist from " << i << ": " << std::setprecision(10) << mDuckInfo[i].currDistance(mDuckInfo[0]) << endl;
+	}
      
     for(int i=0;i<pDucks.size();i++)
     {
