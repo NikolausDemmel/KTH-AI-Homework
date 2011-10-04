@@ -29,10 +29,10 @@ run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
 run-practice-opt: client-opt
-	./client-opt $(SERVER) $(PORT) $(MODE) practice maxturns=1500
+	./client-opt $(SERVER) $(PORT) $(MODE) practice numturns=1000
 
 test-practice-opt:
-	for i in {1..100} ; do $(MAKE) run-practice-opt | grep "wrong"; done | wc -l
+	for i in {1..100} ; do $(MAKE) run-practice-opt | grep "wrong" ; done  | wc -l 
 
 clean:
 	rm -f client
@@ -42,6 +42,12 @@ zip: demmel_cpp_hw3.zip
 
 demmel_cpp_hw3.zip: *.h *.cc
 	zip demmel_cpp_hw3.zip *.h *.cc
+
+plot2:
+	./plot.sh "./output.csv" "1:2"
+
+plot3:
+	./plot.sh "./output.csv" "1:3"
 
 #runtest: test
 #	./test	
