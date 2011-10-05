@@ -21,6 +21,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/io.hpp>
+#include "storage_adaptors.hpp"
 
 using namespace boost::numeric::ublas;
 using std::cout;
@@ -81,7 +82,8 @@ public:
 		B(model.B),
 		pi(model.pi)
 	{
-		standardInitialization();
+		hardcodedInitialization();
+//		standardInitialization();
 	}
 
 	HMM(const model_t &model_):
@@ -129,6 +131,30 @@ public:
 		return *this;
 	}
 
+	void hardcodedInitialization() {
+		double init_A[3][3] = {
+			0.80, 0.05, 0.15,
+			0.05, 0.70, 0.25,
+			0.09, 0.01, 0.90
+		};
+
+		double init_B[3][9] = {
+			0.13, 0.11, 0.11, 0.11, 0.13, 0.11, 0.12, 0.11, 0.09,
+			0.09, 0.10, 0.13, 0.08, 0.12, 0.09, 0.13, 0.14, 0.12,
+			0.09, 0.12, 0.09, 0.13, 0.10, 0.11, 0.11, 0.13, 0.12
+		};
+
+		A = make_matrix_from_pointer(init_A);
+		B = make_matrix_from_pointer(init_B);
+
+		pi[0] = 0.7;
+		pi[1] = 0.2;
+		pi[2] = 0.1;
+
+		if(! (is_row_stochastic(A) && is_row_stochastic(B) && is_stochastic(pi)))
+			throw "You idiot. Learn to count...";
+	}
+
 	void standardInitialization(bool uniform = false) {
 		prob nth = 1.0/N;
 		prob mth = 1.0/M;
@@ -160,6 +186,9 @@ public:
 				pi[i] = roughly(nth/4.0);
 		}
 		normalize(pi);
+
+		if(! (is_row_stochastic(A) && is_row_stochastic(B) && is_stochastic(pi)))
+			throw "Messed it up...";
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -179,9 +208,47 @@ public:
 	}
 
 	observation predictNextObs() {
-		c_vector<prob, M> obs_dist = prod(alpha[T-1],B);
-		cerr << "best observation prob: " << *std::max_element(obs_dist.begin(),obs_dist.end()) << endl;
-		return observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
+
+		/// Simple version in terms of vector matrix product
+		state_dist_t alphaT = prod(alpha[T-1],A);
+		c_vector<prob, M> obs_dist = prod(alphaT,B);
+		int result = observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
+
+//		cerr << "best observation prob: " << *std::max_element(obs_dist.begin(),obs_dist.end()) << endl;
+
+		// more insanity checks
+		// writing out the loops, just to make sure the upper implementation does the right thing
+		state_dist_t foo;
+		for (int i = 0; i < N; ++i) {
+			foo(i) = 0;
+			for (int j = 0; j < N; ++j) {
+				foo(i) += alpha[T-1][j] * A(j,i);
+			}
+		}
+
+		c_vector<prob, M> bar;
+		for (int i = 0; i < M; ++i) {
+			bar(i) = 0;
+			for (int j = 0; j < N; ++j) {
+				bar(i) += foo[j] * B(j,i);
+			}
+		}
+
+		double max = 0;
+		int index = 0;
+		for (int i = 0; i < M; ++i) {
+			if (bar(i) > max) {
+				max = bar(i);
+				index = i;
+			}
+		}
+		if ( index != result) {
+			cout << obs_dist << endl << bar << endl << alphaT << endl << foo << endl << result << endl << index << endl;
+			throw("FOOOO. multiplication sucks...");
+		}
+		// end of insanity check
+
+		return result;
 	}
 
 #ifndef HMM_UBLAS_IMPL
@@ -369,9 +436,9 @@ public:
 #endif
 
 			const double steepness = 5; // bigger values mean more extreme curve
-			const double linearfraction = 0.4;
-			const double startingnoise = 0.1;
-			const double middlenoise = 0.001;
+			const double linearfraction = 0.3;
+			const double startingnoise = 0.5;
+			const double middlenoise = 0.1;
 			double delay = fixedNumIters*linearfraction;
 			if (iters < delay) {
 				noise = ((startingnoise-middlenoise)*(delay - iters)/delay) + middlenoise;
@@ -402,7 +469,7 @@ public:
 				abort = iters >= fixedNumIters;
 				static bool foo = true;
 				if (foo && logProb - eps <= oldLogProb) {
-					cout << "abort rule at: " << iters << endl;
+					cout << "abort rule at: " << iters << endl; // report for the fixed number of iteration, when the abort rule would have kicked in
 					foo = false;
 				}
 			} else
@@ -607,6 +674,8 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 // UBLAS IMPLEMENTATION
 //////////////////////////////////////////////////////////////////////////////
+
+// this is much nicer code, but it seems to have numerical problems...
 
 #ifdef HMM_UBLAS_IMPL
 

@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 namespace ducks
 {
@@ -109,17 +110,14 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 #endif
 
 	std::vector<DuckObservation> obs;
-	for (int t = 300; t < T; ++t) {
+	for (int t = 0; t < T; ++t) {
 		obs.push_back(DuckObservation(duck.GetAction(t)));
 	}
 	duck_model.setObservations(&obs);
 
-	/// FIXME: TEST
-	//duck_model.standardInitialization(true);
-
 	try {
 		EnableTimer(pDue);
-		duck_model.learnModel(200, true, 1000);
+		duck_model.learnModel(200, true, 100);
 		DisableTimer();
 	}
 	catch (timeout_exception &e) {
@@ -146,11 +144,22 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 	mDuckInfo[0].getModel().printState();
 	mDuckInfo[1].getModel().printState();
 
-	mDuckInfo[0].analyseDevelopment();
+	// mDuckInfo[0].analyseDevelopment();
 
 	for (int i = 0; i < pDucks.size(); ++i) {
-		cout << "dist to " << i << ": " << std::setprecision(10) << mDuckInfo[0].currDistance(mDuckInfo[i]) << endl;
+		cout << "dist to   " << i << ": " << std::setprecision(10) << mDuckInfo[0].currDistance(mDuckInfo[i]) << endl;
 		cout << "dist from " << i << ": " << std::setprecision(10) << mDuckInfo[i].currDistance(mDuckInfo[0]) << endl;
+	}
+
+	std::fstream out("distances.csv", std::fstream::out);
+
+	for (int i = 0; i < pDucks.size(); ++i) {
+		for (int j = 0; j < pDucks.size(); ++j) {
+			out << std::setprecision(10) << mDuckInfo[i].currDistance(mDuckInfo[j]);
+			if (j < pDucks.size() - 1)
+				out << ";";
+		}
+		out << endl;
 	}
      
     for(int i=0;i<pDucks.size();i++)

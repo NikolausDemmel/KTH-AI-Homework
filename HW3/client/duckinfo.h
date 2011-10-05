@@ -29,7 +29,14 @@ public:
 	DuckInfo():
 		mDuck(0),
 		mModel(),
-		mObs()
+		mObs(),
+		mNumUp(0),
+		mNumDown(0),
+		mNumVStopped(0),
+		mNumWest(0),
+		mNumEast(0),
+		mNumHStopped(0),
+		mRoundOfDeath(-1)
 	{
 	}
 
@@ -39,8 +46,8 @@ public:
 	}
 
 	void iteration(int round) {
-		mAllModels.resize(round);
-		mAllModels[round-1] = hmm_t::model_t(mModel.getModel());
+//		mAllModels.resize(round);
+//		mAllModels[round-1] = hmm_t::model_t(mModel.getModel());
 	}
 
 	void update(bool verbose)
@@ -58,16 +65,16 @@ public:
 	}
 
 	void analyseDevelopment() {
-		for (int t = 0; t < mAllModels.size(); ++t) {
-			hmm_t::model_t m = mAllModels[t];
-			cout << "t " << t << ", dist " << std::setprecision(15) << mModel.simple_distance(m);
-			hmm_t hmm(mAllModels[t]);
-			cout << ", kl dist " << std::setprecision(15) << mModel.distance(hmm) << endl;
-		}
+//		for (int t = 0; t < mAllModels.size(); ++t) {
+//			hmm_t::model_t m = mAllModels[t];
+//			cout << "t " << t << ", dist " << std::setprecision(15) << mModel.simple_distance(m);
+//			hmm_t hmm(mAllModels[t]);
+//			cout << ", kl dist " << std::setprecision(15) << mModel.distance(hmm) << endl;
+//		}
 	}
 
 	prob currDistance(DuckInfo &other) {
-		cout <<  "foo: " << std::setprecision(15) << mModel.simple_distance(other.mModel.getModel());
+		//cout <<  "foo: " << std::setprecision(15) << mModel.simple_distance(other.mModel.getModel());
 		return mModel.distance(other.mModel);
 	}
 
@@ -77,7 +84,15 @@ private:
 	const CDuck *mDuck;
 	hmm_t mModel;
 
-	std::vector<hmm_t::model_t> mAllModels;
+	int mNumUp;
+	int mNumDown;
+	int mNumVStopped;
+	int mNumWest;
+	int mNumEast;
+	int mNumHStopped;
+	int mRoundOfDeath;
+
+	// std::vector<hmm_t::model_t> mAllModels;
 };
 
 

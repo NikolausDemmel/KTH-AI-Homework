@@ -20,19 +20,60 @@ using namespace boost::numeric::ublas;
 namespace ducks {
 
 
+const double threshhold = 1e-10;
+
+
 template<class prob>
 prob roughly(prob val) {
 	return val + random_delta<prob>(val, 0.1); // +- 10 %
 }
 
 template<class T>
+bool is_stochastic(T &vec) {
+	double sum = 0;
+	for (int i = 0; i < vec.size(); ++i) {
+		sum += vec[i];
+	}
+	return abs(sum-1.0) < threshhold;
+}
+
+template<class M>
+bool is_stochastic(matrix_row<M> row) {
+	double sum = 0;
+	for (int i = 0; i < row.size(); ++i) {
+		sum += row[i];
+	}
+	return abs(sum-1.0) < threshhold;
+}
+
+template<class T>
+bool is_row_stochastic(T &mat) {
+	for (int i = 0; i < mat.size1(); ++i) {
+		if (! is_stochastic(row(mat,i)))
+			return false;
+	}
+	return true;
+}
+
+template<class T>
 void normalize(T &vec) {
 	vec /= sum(vec);
+
+	// I'm getting insane looking for the error, so go crazy with sanity checks
+	is_stochastic(vec);
 }
 
 template<class M>
 void normalize(matrix_row<M> row) {
 	row /= sum(row);
+
+	// I'm getting insane looking for the error, so crazy sanity checks
+	double sum = 0;
+	for (int i = 0; i < row.size(); ++i) {
+		sum += row[i];
+	}
+	if (abs(sum-1.0)>1e-10)
+		throw "FOOOO normalize sucks...";
 }
 
 template<class V>
@@ -42,6 +83,15 @@ void addNoise(V &vec, double noise = 0.001) {
 		vec[i] += random<double>(0, noise);
 	}
 	normalize(vec);
+
+
+	// I'm getting insane looking for the error, so crazy sanity checks
+	double sum = 0;
+	for (int i = 0; i < vec.size(); ++i) {
+		sum += vec[i];
+	}
+	if (abs(sum-1.0)>1e-10)
+		throw "FOOOO normalize sucks...";
 }
 
 template<class M, class prob>
@@ -51,6 +101,14 @@ void addNoise(matrix_row<M> row, prob noise = 0.001) {
 		row[i] += random<prob>(0, noise);
 	}
 	normalize(row);
+
+	// I'm getting insane looking for the error, so crazy sanity checks
+	double sum = 0;
+	for (int i = 0; i < row.size(); ++i) {
+		sum += row[i];
+	}
+	if (abs(sum-1.0)>1e-10)
+		throw "FOOOO normalize sucks...";
 }
 
 template<int N, int M, class prob>
@@ -58,6 +116,14 @@ void addNoise(c_matrix<prob,N,M> &mat, prob noise = 0.001) {
 	// Add noise to a row stachastic matrix
 	for (int i = 0; i < mat.size1(); ++i) {
 		addNoise<c_matrix<prob,N,M>, prob>(row(mat,i));
+
+		// I'm getting insane looking for the error, so crazy sanity checks
+		double sum = 0;
+		for (int j = 0; j < mat.size2(); ++j) {
+			sum += mat(i,j);
+		}
+		if (abs(sum-1.0)>1e-10)
+			throw "FOOOO normalize sucks...";
 	}
 }
 
