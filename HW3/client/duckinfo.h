@@ -22,31 +22,50 @@ using std::endl;
 namespace ducks {
 
 
+const int cRoundsUnknownDiscardPattern = 10;
+
 const double WhiteReward = 3;
 const double ColorReward = 5;
 const double BlackReward = -300;
 const double MissReward = -1;
 
-const double UnknownReward = 2; // FIXME
+const double UnknownReward = 4; // FIXME
 
 
+enum Answer {
+	SayYes,
+	SayNo,
+	SayMaybe
+};
 
-static double speciesReward(ESpecies spec) {
-	switch(spec) {
-	case SPECIES_WHITE:
-		return WhiteReward;
-	case SPECIES_BLACK:
-		return BlackReward;
-	case SPECIES_BLUE:
-	case SPECIES_RED:
-	case SPECIES_YELLOW:
-	case SPECIES_GREEN:
-		return ColorReward;
-	case SPECIES_UNKNOWN:
-		return UnknownReward;
-	}
-}
+enum Group {
+	UnknownGroup,
+	WhiteGroup,
+	BlackGroup,
+	Color1Group,
+	Color2Group,
+	Color3Group,
+	Color4Group
+};
 
+enum Pattern {
+	Quacking = 0,
+	Migrating = 1,
+	Panicking = 2,
+	FeigningDeath = 3,
+	UnknownPattern = 4
+};
+
+std::string patternToString(Pattern pat);
+
+static const std::list<Pattern> gAllPatterns = { Quacking, Migrating, Panicking, FeigningDeath };
+std::vector<std::string> patternToString(const std::vector<Pattern> &pats);
+
+double speciesReward(ESpecies spec);
+
+Pattern categorizeBrow(std::vector<prob> &BHori, std::vector<prob> &BVert);
+
+class CPlayer;
 
 class DuckInfo
 {
@@ -66,7 +85,9 @@ public:
 		mNumEast(0),
 		mNumHStopped(0),
 		mRoundOfDeath(-1),
-		mSpecies(SPECIES_UNKNOWN)
+		mSpecies(SPECIES_UNKNOWN),
+		mPatterns({UnknownPattern, UnknownPattern, UnknownPattern}),
+		mPatternsLastKnown({-1,-1,-1})
 	{
 	}
 
@@ -79,11 +100,20 @@ public:
 		mNumber = i;
 	}
 
+	void setPlayer(CPlayer *p) {
+		mPlayer = p;
+	}
+
+	void notifyBlackBirdFound();
+	bool isBlackBirdFound();
+
 	bool isDead() {
 		return mRoundOfDeath >= 0;
 	}
 
 	bool couldBeBlack() {
+		if (isBlackBirdFound())
+			return false;
 		return false; // FIXME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	}
 
@@ -95,7 +125,15 @@ public:
 				int move = mDuck->GetAction(i).GetMovement();
 
 				if (move & BIRD_DEAD) {
+					// Bird became dead. See if we know its species.
 					mRoundOfDeath = i;
+					if (mDuck->GetSpecies() != SPECIES_UNKNOWN) {
+						// this means we have hit the duck
+						mSpecies = mDuck->GetSpecies();
+						if (mSpecies == SPECIES_BLACK) {
+							notifyBlackBirdFound();
+						}
+					}
 					break;
 				}
 
@@ -131,6 +169,105 @@ public:
 		}
 
 		mModel.learnModel(10, 30, false, verbose);
+
+		// categorizeDuck();
+	}
+
+	Answer hasPattern(Pattern p) {
+		bool hasUnknown = false;
+		for (int i = 0; i < 3; ++i) {
+			if (mPatterns[i] == p)
+				return SayYes;
+			if (mPatterns[i] == UnknownPattern)
+				hasUnknown = true;
+		}
+
+		if (hasUnknown)
+			return SayMaybe;
+		else
+			return SayNo;
+
+	}
+
+	void categorizeDuck() {
+		mModel.calculate_B_split();
+		auto split = mModel.getBSplit();
+		auto Bh = (*split)[DuckObservation::splitHindex];
+		auto Bv = (*split)[DuckObservation::splitVindex];
+
+		std::vector<prob> vrow(3), hrow(3);
+		std::list<Pattern> allPats(gAllPatterns);
+
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				hrow[j] = Bh(i,j);
+				vrow[j] = Bv(i,j);
+			}
+			Pattern pat = categorizeBrow(hrow, vrow);
+			mPatterns[i] = filterPatternChange(i, mPatterns[i], pat);
+		}
+		removeDoublePatterns();
+	}
+
+	void removeDoublePatterns() {
+		std::list<Pattern> to_remove;
+		for (int i = 0; i < 4; ++i) {
+			Pattern p = static_cast<Pattern>(i);
+			if (std::count(mPatterns.begin(), mPatterns.end(), p) > 1) {
+				to_remove.push_front(p);
+			}
+		}
+		for(auto it = to_remove.begin(); it != to_remove.end(); ++it) {
+			for (int i = 0; i < 3; ++i) {
+				if (mPatterns[i] == (*it)) {
+					mPatterns[i] = UnknownPattern;
+				}
+			}
+ 		}
+	}
+
+	Pattern filterPatternChange(int index, Pattern old, Pattern curr) {
+		if (curr != UnknownPattern) {
+			mPatternsLastKnown[index] = mLastRound;
+		}
+
+
+		if (old == UnknownPattern)
+			return curr;
+		if (curr == UnknownPattern) {
+			cout << "Previously known pattern now unknown. Duck: " << mNumber << endl;
+			if (mLastRound - mPatternsLastKnown[index] > cRoundsUnknownDiscardPattern) {
+				cout << "Discarding old value, since its too long not known." << endl;
+				return UnknownPattern;
+			}
+			return old;
+		}
+		if (old != curr) {
+			cout << "changing pattern!" << endl;
+		}
+		return curr;
+	}
+
+	std::list<Pattern> knownPatterns() {
+		std::list<Pattern> pats;
+		for (int i = 0; i < 3; ++i) {
+			if(mPatterns[i] != UnknownPattern) {
+				pats.push_back(mPatterns[3]);
+			}
+		}
+		return pats;
+	}
+
+	Pattern missingPattern() {
+		std::list<Pattern> patterns(gAllPatterns);
+		for (int i = 0; i < 3; ++i) {
+			patterns.remove(mPatterns[i]);
+		}
+		if(patterns.size() == 1) {
+			return patterns.front();
+		} else {
+			return UnknownPattern;
+		}
 	}
 
 	hmm_t& getModel() {
@@ -235,13 +372,34 @@ public:
 		return fabs(mModel.kullback_leibler_distance_sample(other.mModel));
 	}
 
+	const std::vector<Pattern>& getPatterns() {
+		return mPatterns;
+	}
+
+	void setSpecies(ESpecies spec) {
+		mSpecies = spec;
+	}
+
+	ESpecies getSpecies() {
+		return mSpecies;
+	}
+
+	void maybeUpdateSpecies(ESpecies spec) {
+		if (getSpecies() == SPECIES_UNKNOWN) {
+			setSpecies(spec);
+		}
+	}
+
 private:
 
+	CPlayer *mPlayer;
 	const CDuck *mDuck;
 	int mNumber;
 	hmm_t mModel;
 	std::vector<DuckObservation> mObs;
 	int mLastRound;
+	std::vector<Pattern> mPatterns;
+	std::vector<int> mPatternsLastKnown;
 
 	int mNumUp;
 	int mNumDown;

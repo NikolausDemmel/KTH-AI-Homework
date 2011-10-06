@@ -23,7 +23,7 @@ test-practice:
 build-opt: client-opt
 
 client-opt: *.cc *.h
-	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -DNDEBUG -DBOOST_UBLAS_NDEBUG -o client-opt *.cc
+	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -O3 -o client-opt *.cc
 
 run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)

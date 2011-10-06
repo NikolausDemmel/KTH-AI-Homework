@@ -23,7 +23,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/io.hpp>
-#include "storage_adaptors.hpp"
+#include "storage_adaptors.h"
 
 using namespace boost::numeric::ublas;
 using std::cout;
@@ -735,7 +735,7 @@ public:
 		return dists;
 	}
 
-	void print_B_split()
+	void print_B_split(std::vector<string> prefixes = std::vector<string>())
 	{
 		if (!B_split.empty()) {
 			cout << "Split of B in " << obs_names.size() << " independent distributions:" << endl;
@@ -745,11 +745,15 @@ public:
 				++k;
 				int m = names.size() - 1;
 				cout << "B-" << names.front() << endl;
+				if (prefixes.size() > 0)
+					cout << setw(11) << " ";
 				for (auto it = ++(names.begin()); it != names.end(); ++it) {
 					cout << setw(7) << *it << " ";
 				}
 				cout << endl;
 				for (int i = 0; i < N; ++i) {
+					if (prefixes.size() > 0)
+						cout << setw(10) << prefixes[i] << " ";
 					for (int j = 0; j < m; ++j) {
 						cout << mat(i,j) << " ";
 					}

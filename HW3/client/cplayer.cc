@@ -24,16 +24,28 @@ void CPlayer::Initialize(const CState &pState)
 	cout << "INITIALIZATION" << endl;
 #endif
 
+	mBlackFound = false;
 	mRound = 0;
 	mFirstTime = false;
 	mState = &pState;
 	mNumDucks = mState->GetNumDucks();
 
+	mGroups.resize(5);
+
 	mDuckInfo.resize(mNumDucks);
 	for (int i = 0; i < mNumDucks; ++i) {
 		mDuckInfo[i].setDuck(&(mState->GetDuck(i)));
 		mDuckInfo[i].setNumber(i);
+		mDuckInfo[i].setPlayer(this);
 	}
+}
+
+void CPlayer::notifyBlackBirdFound() {
+	mBlackFound = true;
+}
+
+bool CPlayer::isBlackBirdFound() {
+	return mBlackFound;
 }
 
 bool CPlayer::isSingleplayer() {
@@ -67,7 +79,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 		Initialize(pState);
 
 
-	int startShooting = 50; // FIXME !!!
+	int startShooting = 100; // FIXME !!!
 	if(isSingleplayer()) {
 		startShooting = 100; // FIXME !!!!
 	}
@@ -103,7 +115,8 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 		for (int i = 0; i < mState->GetNumDucks(); ++i) {
 
-			if (mDuckInfo[i].isDead() || mDuckInfo[i].couldBeBlack())
+			if ( mDuckInfo[i].isDead() || mDuckInfo[i].couldBeBlack() ||
+				 mDuckInfo[i].getSpecies() == SPECIES_BLACK )
 				continue;
 
 			int obs;
@@ -127,9 +140,34 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 	cout << "Chosen action with expected utility: " << bestReward << endl;
 	action.Print();
+	/*
+	for (int i = 0; i < 5; ++i) {
+		mGroups[i].clear();
+	}
+	int count = 0;
+	for (int i = 0; i < mDuckInfo.size(); ++i) {
+		if( UnknownPattern != mDuckInfo[i].missingPattern()) {
+			count++;
+		}
+		mGroups[mDuckInfo[i].missingPattern()].push_back(i);
+	}
+	cout << count << " Patterns completely identified." << endl;
+
+	cout << "size of groups";
+	for (int i = 0; i < 5; ++i) {
+		int size = mGroups[i].size();
+		cout << mGroups[i].size() << ", ";
+		if (size == 1 && !mBlackFound) {
+			mDuckInfo[mGroups[i][0]].maybeUpdateSpecies(SPECIES_BLACK);
+			mBlackFound = true;
+		}
+	}
+	cout << endl; */
+
 
 	return action;
 }
+
 
 
 
@@ -148,11 +186,12 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 	cout << "GUESSING" << endl;
 #endif
 
-	mDuckInfo[0].getModel().printState();
-	mDuckInfo[1].getModel().printState();
-	mDuckInfo[2].getModel().printState();
-	mDuckInfo[3].getModel().printState();
-
+/*	mDuckInfo[0].getModel().print_B_split(patternToString(mDuckInfo[0].getPatterns()));
+	mDuckInfo[1].getModel().print_B_split(patternToString(mDuckInfo[1].getPatterns()));
+	mDuckInfo[2].getModel().print_B_split(patternToString(mDuckInfo[2].getPatterns()));
+	mDuckInfo[3].getModel().print_B_split(patternToString(mDuckInfo[3].getPatterns()));
+	mDuckInfo[4].getModel().print_B_split(patternToString(mDuckInfo[4].getPatterns()));
+*/
 	// mDuckInfo[0].analyseDevelopment();
 
 //	for (int i = 0; i < pDucks.size(); ++i) {

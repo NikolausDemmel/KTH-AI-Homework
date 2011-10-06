@@ -47,7 +47,17 @@ public:
     bool isSingleplayer();
     bool isPractice(const CState *state = 0);
 
+    void notifyBlackBirdFound();
+    bool isBlackBirdFound();
+
+    int totalNumberOfSpecies(ESpecies species);
+
 private:
+
+    std::vector<std::vector<int>> mGroups;
+    std::vector<std::vector<int>> mGroupsDeadBirds;
+
+    std::vector<int> mDeadSpeciesCount;
 
     std::vector<DuckInfo> mDuckInfo;
     const CState *mState;
@@ -55,6 +65,7 @@ private:
     int mNumDucks;
     int mRound;
 
+    bool mBlackFound;
 };
 
 /*namespace ducks*/ }

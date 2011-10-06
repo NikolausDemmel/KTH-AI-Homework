@@ -5,8 +5,7 @@
 
 int main(int pArgC,char **pArgs)
 {
-
-	if(pArgC<4)
+    if(pArgC<4)
     {
         std::cerr << "usage: " << pArgs[0] << " host port STANDALONE [options]" << std::endl;
         return -1;

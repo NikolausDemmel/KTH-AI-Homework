@@ -10,6 +10,8 @@
 
 
 #include "defines.h"
+#include "common.h"
+#include "hmm.h"
 
 #include <sstream>
 #include <vector>
@@ -20,6 +22,7 @@ using std::list;
 
 
 namespace ducks {
+
 
 
 class DuckObservation
