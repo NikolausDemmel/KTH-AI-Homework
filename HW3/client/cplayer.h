@@ -1,6 +1,7 @@
 #ifndef _DUCKS_CPLAYER_H_
 #define _DUCKS_CPLAYER_H_
 
+#include "defines.h"
 #include "ctime.h"
 #include "cstate.h"
 #include "hmm.h"
@@ -42,6 +43,9 @@ public:
 
     void DisableTimer();
     void EnableTimer(const CTime &pDue);
+
+    bool isSingleplayer();
+    bool isPractice(const CState *state = 0);
 
 private:
 

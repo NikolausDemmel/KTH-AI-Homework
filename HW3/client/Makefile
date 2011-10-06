@@ -49,6 +49,9 @@ plot2:
 plot3:
 	./plot.sh "./output.csv" "1:3"
 
+plot-mat:
+	./plot-matrix.sh "./distances.csv"
+
 #runtest: test
 #	./test	
 

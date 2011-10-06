@@ -5,7 +5,8 @@
 
 int main(int pArgC,char **pArgs)
 {
-    if(pArgC<4)
+
+	if(pArgC<4)
     {
         std::cerr << "usage: " << pArgs[0] << " host port STANDALONE [options]" << std::endl;
         return -1;
@@ -29,7 +30,11 @@ int main(int pArgC,char **pArgs)
         lArgs+=pArgs[i];
     }
     
-    lClient.Run(pArgs[1],pArgs[2],lArgs,lStandalone);
+    try {
+    	lClient.Run(pArgs[1],pArgs[2],lArgs,lStandalone);
+    } catch (char const * e) {
+    	cout << "EXCEPTION " << e << endl;
+    }
 
     return 0;
 }

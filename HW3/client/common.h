@@ -8,6 +8,10 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+
+#include "defines.h"
+
+
 #include "constants.h"
 #include "ctime.h"
 #include <random>
@@ -61,6 +65,8 @@ const char* actionToShortString(EAction a);
 std::string movementToString(int m);
 
 
+bool hStopped(int movement);
+bool vStopped(int movement);
 
 // TIMEOUT
 class timeout_exception: public std::exception
@@ -72,10 +78,9 @@ public:
 	}
 };
 
-static bool gTimeout = false;
-
 void timeout_handler (int i);
 
+void reset_timeout_flag();
 void check_timeout();
 
 

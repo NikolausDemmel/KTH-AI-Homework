@@ -9,9 +9,15 @@
 #define HMMUTILS_H_
 
 
+#include "defines.h"
+
+
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
+
+#include <boost/math/special_functions/fpclassify.hpp>
+using namespace boost::math;
 
 
 using namespace boost::numeric::ublas;
@@ -177,6 +183,76 @@ int sample(const Mat &mat, int row) {
 	}
 	return mat.size2()-1; // failsafe
 }
+
+template<class T>
+bool vec_has_nan(T &vec) {
+	for (int i = 0; i < vec.size(); ++i) {
+		if ((isnan)(vec[i]))
+			return true;
+	}
+	return false;
+}
+
+template<class T>
+bool mat_has_nan(T &mat) {
+	for (int i = 0; i < mat.size1(); ++i) {
+		for (int j = 0; j < mat.size2(); ++j) {
+			if ((isnan)(mat(i,j)))
+				return true;
+		}
+	}
+	return false;
+}
+
+
+/// extended logarithm and friends
+
+const double LOGZERO = std::numeric_limits<double>::quiet_NaN();
+
+static bool islogzero(double x) {
+	return (isnan)(x);
+}
+
+static double eexp(double x) {
+	if (islogzero(x))
+		return 0;
+	else
+		return exp(x);
+}
+
+static double eln(double x) {
+	if (x == 0) {
+		return LOGZERO;
+	} else if(x > 0) {
+		return log(x);
+	} else {
+		throw "negative input error";
+	}
+}
+
+static double elnsum(double elnx, double elny) {
+	if ( islogzero(elnx) || islogzero(elny) ) {
+		if ( islogzero(elnx) )
+			return elny;
+		else
+			return elnx;
+	} else {
+		if ( elnx > elny ) {
+			return elnx + eln(1 + exp(elny - elnx));
+		} else {
+			return elny + eln(1 + exp(elnx - elny));
+		}
+	}
+
+}
+
+static double elnproduct(double elnx, double elny) {
+	if (islogzero(elnx) || islogzero(elny))
+		return LOGZERO;
+	else
+		return elnx + elny;
+}
+
 
 
 }

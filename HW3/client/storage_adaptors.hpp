@@ -17,6 +17,9 @@
 #ifndef BOOST_UBLAS_STORAGE_ADAPTORS_H
 #define BOOST_UBLAS_STORAGE_ADAPTORS_H
 
+
+#include "defines.h"
+
 #include <algorithm>
 
 #include <boost/numeric/ublas/exception.hpp>

@@ -9,6 +9,7 @@
 #define HMM_H_
 
 #include "common.h"
+
 #include "hmmutils.h"
 #include <cassert>
 #include <limits>
@@ -16,6 +17,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <fstream>
+#include <utility>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -33,6 +35,7 @@ using std::list;
 using std::pair;
 using std::string;
 using std::fstream;
+using std::pair;
 
 
 #define DEBUG_FILE "./output.csv"
@@ -60,6 +63,7 @@ public:
 	typedef HMM<N, M, observation> self_t;
 
 	typedef c_vector<prob, N> state_dist_t;
+	typedef c_vector<prob, M> obs_dist_t;
 	typedef c_matrix<prob, N, N> state_state_trans_t;
 	typedef c_matrix<prob, N, M> state_obs_trans_t;
 
@@ -76,11 +80,12 @@ public:
 public:
 
 	HMM(std::vector<list<string>> obs_split_names = std::vector<list<string>>()):
-		obs_names(obs_split_names),
 		model(),
+		obs_names(obs_split_names),
 		A(model.A),
 		B(model.B),
-		pi(model.pi)
+		pi(model.pi),
+		mReinitCount(0)
 	{
 		hardcodedInitialization();
 //		standardInitialization();
@@ -90,7 +95,8 @@ public:
 		model(model_),
 		A(model.A),
 		B(model.B),
-		pi(model.pi)
+		pi(model.pi),
+		mReinitCount(0)
 	{
 	}
 
@@ -107,7 +113,8 @@ public:
 		obs_names(obj.obs_names),
 		B_split(obj.B_split),
 		T(obj.T),
-		obs(obj.obs) // point to the same observation list
+		obs(obj.obs), // point to the same observation list
+		mReinitCount(obj.mReinitCount)
 	{
 	}
 
@@ -207,47 +214,17 @@ public:
 		}
 	}
 
+	state_dist_t distNextState() {
+		return prod(alpha[T-1],A);
+	}
+
+	obs_dist_t distNextObs() {
+		return prod(distNextState(),B);
+	}
+
 	observation predictNextObs() {
-
-		/// Simple version in terms of vector matrix product
-		state_dist_t alphaT = prod(alpha[T-1],A);
-		c_vector<prob, M> obs_dist = prod(alphaT,B);
+		auto obs_dist = distNextObs();
 		int result = observation(std::max_element(obs_dist.begin(),obs_dist.end()) - obs_dist.begin());
-
-//		cerr << "best observation prob: " << *std::max_element(obs_dist.begin(),obs_dist.end()) << endl;
-
-		// more insanity checks
-		// writing out the loops, just to make sure the upper implementation does the right thing
-		state_dist_t foo;
-		for (int i = 0; i < N; ++i) {
-			foo(i) = 0;
-			for (int j = 0; j < N; ++j) {
-				foo(i) += alpha[T-1][j] * A(j,i);
-			}
-		}
-
-		c_vector<prob, M> bar;
-		for (int i = 0; i < M; ++i) {
-			bar(i) = 0;
-			for (int j = 0; j < N; ++j) {
-				bar(i) += foo[j] * B(j,i);
-			}
-		}
-
-		double max = 0;
-		int index = 0;
-		for (int i = 0; i < M; ++i) {
-			if (bar(i) > max) {
-				max = bar(i);
-				index = i;
-			}
-		}
-		if ( index != result) {
-			cout << obs_dist << endl << bar << endl << alphaT << endl << foo << endl << result << endl << index << endl;
-			throw("FOOOO. multiplication sucks...");
-		}
-		// end of insanity check
-
 		return result;
 	}
 
@@ -370,12 +347,47 @@ public:
 		return sum;
 	}
 
+	prob directLogProb(std::vector<observation> *observations) {
+		// locally overwrite these variable
+		prob T = obs->size();
+		state_dist_t pi = uniform_state_dist();
+		auto obs = observations;
+
+		prob logalpha;
+		state_dist_t last, curr;
+
+		for (int i = 0; i < N; ++i) {
+			curr[i] = elnproduct(eln(pi[i]),eln(B(i,(*obs)[0])));
+		}
+		for (int t = 1; t < T; ++t) {
+			last = curr;
+			for (int j = 0; j < N; ++j) {
+				logalpha = LOGZERO;
+				for (int i = 0; i < N; ++i) {
+					logalpha = elnsum(logalpha, elnproduct(last[i], eln(A(i,j))));
+				}
+				curr[j] = elnproduct(logalpha, eln(B(j,(*obs)[t])));
+			}
+		}
+
+		logalpha = LOGZERO;
+		for (int i = 0; i < N; ++i) {
+			logalpha = elnsum(logalpha, curr[i]);
+		}
+
+		return logalpha;
+	}
+
+
 	prob logProbability(std::vector<observation>* observations) {
 		int T_ = T;
 		auto obs_ = obs;
+		auto pi_ = pi;
 
 		obs = observations;
 		T = obs->size();
+
+		pi = uniform_state_dist(); // when comparing models of idfferent birds, we have the problem that birds of the same species start in different states.
 
 		alpha.resize(T);
 		c.resize(T);
@@ -385,6 +397,7 @@ public:
 
 		T = T_;
 		obs = obs_;
+		pi = pi_;
 
 		return p;
 	}
@@ -396,7 +409,7 @@ public:
 		reestimateModel();
 	}
 
-	void learnModel(int maxIters = 200, bool verbose = false, int fixedNumIters = 0) {
+	void learnModel(int minIters, int maxIters, bool practice_mode, bool verbose = false) {
 		T = obs->size();
 		assert(validObservations());
 
@@ -413,18 +426,20 @@ public:
 #endif
 
 		////////////////
-		// 1. Initialization
-
-		prob eps = 1e-5; // FIXME: this is arbitrary
+		// Initialization
+		const int itersToWaitForBestModel = 4;
+		//const prob eps = 1e-5; // FIXME: this is arbitrary
 		int iters = 0;
+		prob noise = 0;
+		bool abort = false;
 		prob logProb = -numeric_limits<prob>::max();
 		prob oldLogProb = 0;
 
+		prob best_log_prob = -numeric_limits<prob>::max();
+		model_t best_model;
+		int iter_best_model = -1;
+
 		resizeVectors();
-
-		bool abort = false;
-		double noise = 0;
-
 
 		do
 		{
@@ -435,20 +450,15 @@ public:
 			cout << "ITERATION " << iters << endl << endl;
 #endif
 
-			const double steepness = 5; // bigger values mean more extreme curve
-			const double linearfraction = 0.3;
-			const double startingnoise = 0.5;
-			const double middlenoise = 0.1;
-			double delay = fixedNumIters*linearfraction;
-			if (iters < delay) {
-				noise = ((startingnoise-middlenoise)*(delay - iters)/delay) + middlenoise;
+			if (model_has_nan()) {
+				noise = 0;
+				hardcodedInitialization();
+				++mReinitCount;
+				// cout << "REINIT!" << endl;
 			} else {
-				noise = ((exp(steepness - ((iters-delay)/((fixedNumIters-delay)/(steepness))) ) - 1) /
-						 (exp(steepness) - 1)) *
-						middlenoise;
-
+				noise = calc_noise(iters, maxIters);
+				addNoiseToModel(noise);
 			}
-			addNoiseToModel(noise);
 
 			learningPhase();
 
@@ -465,22 +475,35 @@ public:
 			logger << iters << ";" << logProb << ";" << noise << endl;
 #endif
 
-			if (fixedNumIters > 0) {
-				abort = iters >= fixedNumIters;
+			// compute best model, not last one found
+			if (logProb > best_log_prob) {
+				best_log_prob = logProb;
+				best_model = model;
+				iter_best_model = iters;
+			}
+
+			if (practice_mode) {
+				abort = iters >= maxIters;
+#ifdef DEBUG
 				static bool foo = true;
-				if (foo && logProb - eps <= oldLogProb) {
-					cout << "abort rule at: " << iters << endl; // report for the fixed number of iteration, when the abort rule would have kicked in
+				if (foo && iters-iter_best_model >= itersToWaitForBestModel) {
+					cout << "Abort rule would have ended at iteration: " << iters << endl;
 					foo = false;
 				}
-			} else
-				abort = iters >= maxIters || logProb - eps <= oldLogProb;
+#endif
+			} else {
+				abort = iters >= maxIters ||
+						(iters >= minIters && iters-iter_best_model >= itersToWaitForBestModel);
+			}
 		}
 		while (!abort);
+
+		model = best_model;
 
 #ifdef DEBUG
 		if (verbose) {
 			std::cerr << "learnModel ended after iteration " << iters
-					  << " with logProb of " << logProb << endl;
+					  << "    with logProb of " << best_log_prob << endl;
 		}
 #endif
 
@@ -505,10 +528,30 @@ public:
 		obs = obs_;
 	}
 
+	prob calc_noise (int iters, int maxNumIters) {
+		const double steepness = 5; // bigger values mean more extreme curve
+		const double linearfraction = 0.1; // which part of the total iterations should be linear decrease of nosie, before we start exponential
+		const double startingnoise = 0.5; // what noise should we start with
+		const double middlenoise = 0.1; // what noise should we have reached when we switch form linear to exponential
+		double delay = maxNumIters*linearfraction;
+		if (iters < delay) {
+			return ((startingnoise-middlenoise)*(delay - iters)/delay) + middlenoise;
+		} else {
+			return ((exp(steepness - ((iters-delay)/((maxNumIters-delay)/(steepness))) ) - 1) /
+					 (exp(steepness) - 1)) *
+					middlenoise;
+
+		}
+	}
+
 	void addNoiseToModel(prob noise = 0.001) {
 		addNoise(pi,noise);
 		addNoise<N,N>(A,noise);
 		addNoise<N,M>(B,noise);
+	}
+
+	bool model_has_nan() {
+		return vec_has_nan(pi) || mat_has_nan(A) || mat_has_nan(B);
 	}
 
 	void resizeVectors() {
@@ -532,7 +575,7 @@ public:
 
 		for (int i = 0; i < num_seqs; ++i) {
 			generateSequence(model, seq, length_seqs);
-			dist += (logProbability(seq) - other.logProbability(seq)) / length_seqs;
+			dist += (directLogProb(&seq) - other.directLogProb(&seq)) / length_seqs;
 		}
 
 		return dist / num_seqs;
@@ -541,10 +584,22 @@ public:
 
 	prob distance(self_t &other) {
 
-		prob dist = (logProbability(obs) - other.logProbability(obs));
+		prob dist = (directLogProb(obs) - other.directLogProb(obs));
+
+		if (islogzero(dist) ) {
+			return 1000;
+		}
 
 		return dist;
 
+	}
+
+	state_dist_t uniform_state_dist() {
+		state_dist_t dist;
+		for (int i = 0; i < N; ++i) {
+			dist[i] = 1.0/N;
+		}
+		return dist;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -571,11 +626,20 @@ private:
 	int T;
 	std::vector<observation> *obs;
 
+	int mReinitCount;
+
 public:
 	model_t& getModel() {
 		return model;
 	}
 
+	int getT() {
+		return T;
+	}
+
+	const std::vector<matrix<prob>> * getBSplit() {
+		return &B_split;
+	}
 
 public:
 
@@ -597,7 +661,7 @@ public:
 		// print B
 		cout << endl << "B: " << endl;
 		for (int j = 0; j < M; ++j) {
-			cout << setw(7) << observation(j).str() << " ";
+			cout << setw(7) << observation((int)j).str() << " ";
 		}
 		cout << endl;
 		for (int i = 0; i < N; ++i) {
@@ -646,6 +710,31 @@ public:
 		}
 	}
 
+	std::vector<std::vector<prob>> split_obs_dist(obs_dist_t obs_dist) {
+		if (obs_names.empty())
+			throw "No obs name woot";
+
+		int total = 1;
+		foreach (list<string> x, obs_names) {
+			total *= x.size() - 1;
+		}
+		assert (total == M);
+
+		std::vector<std::vector<prob>> dists;
+
+		int factor = 1;
+		foreach (list<string> x, obs_names) {
+			int m = x.size() - 1; // first one is name of group
+			std::vector<prob> dist(m,0);
+			for (int i = 0; i < M; ++i) {
+				dist[(i/factor) % m] += obs_dist(i);
+			}
+			factor *= m;
+			dists.push_back(dist);
+		}
+		return dists;
+	}
+
 	void print_B_split()
 	{
 		if (!B_split.empty()) {
@@ -668,6 +757,12 @@ public:
 				}
 				cout << endl;
 			}
+		}
+	}
+
+	void print_warnings() {
+		if (mReinitCount > 0) {
+			cout << "[warning] Reinit count: " << mReinitCount << endl;
 		}
 	}
 

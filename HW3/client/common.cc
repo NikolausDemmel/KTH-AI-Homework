@@ -86,6 +86,13 @@ string movementToString(int m) {
 }
 
 
+bool gTimeout = false;
+
+
+void reset_timeout_flag() {
+	gTimeout = false;
+}
+
 void timeout_handler (int i) {
 	gTimeout = true;
 }
@@ -112,6 +119,15 @@ void ITimevalUntil(const CTime &pNow, const CTime &pUntil,struct itimerval &pDif
     pDiff.it_interval.tv_sec = 0;
     pDiff.it_interval.tv_usec = 0;
 }
+
+
+bool hStopped(int movement) {
+	return !(movement & (MOVE_WEST | MOVE_EAST));
+}
+bool vStopped(int movement) {
+	return !(movement & (MOVE_UP | MOVE_DOWN));
+}
+
 
 
 };

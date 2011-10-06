@@ -9,6 +9,8 @@
 #define DUCKOBSERVATION_H_
 
 
+#include "defines.h"
+
 #include <sstream>
 #include <vector>
 #include <list>
@@ -27,7 +29,7 @@ public:
 
 	DuckObservation(const CAction& action)
 	{
-		mObs = action.GetHAction() + 3*action.GetVAction();
+		mObs = hvToObs(action.GetHAction(), action.GetVAction());
 	}
 
 	DuckObservation(int obs):
@@ -43,6 +45,10 @@ public:
 	operator int() const
 	{
 		return mObs;
+	}
+
+	static int hvToObs(int h, int v) {
+		return h + 3*v;
 	}
 
 	CAction toAction(int birdNumber = 0, int movement = 0) const
@@ -61,6 +67,9 @@ public:
 		ss << "" << actionToShortString(static_cast<EAction>(v));
 		return ss.str();
 	}
+
+	static const int splitHindex = 0;
+	static const int splitVindex = 1;
 
 	static std::vector<list<string>> getSplitNames() {
 		std::vector<list<string>> names;
