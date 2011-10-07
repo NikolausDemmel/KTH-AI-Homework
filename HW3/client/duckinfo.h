@@ -22,7 +22,7 @@ using std::endl;
 namespace ducks {
 
 
-const int cRoundsUnknownDiscardPattern = 10;
+const int cRoundsUnknownDiscardPattern = 50;
 
 const double WhiteReward = 3;
 const double ColorReward = 5;
@@ -170,7 +170,7 @@ public:
 
 		mModel.learnModel(10, 30, false, verbose);
 
-		// categorizeDuck();
+		categorizeDuck();
 	}
 
 	Answer hasPattern(Pattern p) {

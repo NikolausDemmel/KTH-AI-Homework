@@ -41,8 +41,9 @@ Pattern categorizeBrow(std::vector<prob> &BHori, std::vector<prob> &BVert) {
 	     BHori[ACTION_STOP] < 0.1) {
 		return Panicking;
 	}
-	if ( BVert[ACTION_STOP] > 0.8 &&
-		 BHori[ACTION_STOP] < 0.1 ) {
+	if ( BVert[ACTION_STOP] > 0.7 &&
+		 BVert[ACTION_KEEPSPEED] < 0.1 &&
+		 BHori[ACTION_STOP] < 0.2 ) {
 		return Migrating;
 	}
 	if ( BVert[ACTION_ACCELERATE] > 0.30 &&

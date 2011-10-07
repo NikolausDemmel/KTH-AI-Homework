@@ -79,9 +79,9 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 		Initialize(pState);
 
 
-	int startShooting = 100; // FIXME !!!
+	int startShooting = 50; // FIXME !!!
 	if(isSingleplayer()) {
-		startShooting = 100; // FIXME !!!!
+		startShooting = 50; // FIXME !!!!
 	}
 
 
@@ -140,7 +140,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 	cout << "Chosen action with expected utility: " << bestReward << endl;
 	action.Print();
-	/*
+
 	for (int i = 0; i < 5; ++i) {
 		mGroups[i].clear();
 	}
@@ -162,9 +162,11 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 			mBlackFound = true;
 		}
 	}
-	cout << endl; */
+	cout << endl;
 
 
+	// FIXME
+	return cDontShoot;
 	return action;
 }
 
@@ -179,19 +181,24 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 		mDuckInfo[i].getModel().print_warnings();
 	}
 
-	if(isPractice())
+	if(isPractice()) {
+		PracticeModeGuess(pDucks, pDue);
 		return;
+	}
 
 #ifdef DEBUG
 	cout << "GUESSING" << endl;
 #endif
 
-/*	mDuckInfo[0].getModel().print_B_split(patternToString(mDuckInfo[0].getPatterns()));
+	mDuckInfo[0].getModel().printState();
+	mDuckInfo[1].getModel().printState();
+
+	mDuckInfo[0].getModel().print_B_split(patternToString(mDuckInfo[0].getPatterns()));
 	mDuckInfo[1].getModel().print_B_split(patternToString(mDuckInfo[1].getPatterns()));
-	mDuckInfo[2].getModel().print_B_split(patternToString(mDuckInfo[2].getPatterns()));
-	mDuckInfo[3].getModel().print_B_split(patternToString(mDuckInfo[3].getPatterns()));
-	mDuckInfo[4].getModel().print_B_split(patternToString(mDuckInfo[4].getPatterns()));
-*/
+//	mDuckInfo[2].getModel().print_B_split(patternToString(mDuckInfo[2].getPatterns()));
+//	mDuckInfo[3].getModel().print_B_split(patternToString(mDuckInfo[3].getPatterns()));
+//	mDuckInfo[4].getModel().print_B_split(patternToString(mDuckInfo[4].getPatterns()));
+
 	// mDuckInfo[0].analyseDevelopment();
 
 //	for (int i = 0; i < pDucks.size(); ++i) {
@@ -230,6 +237,11 @@ void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 
 
 
+
+
+void CPlayer::PracticeModeGuess(std::vector<CDuck> &pDucks, const CTime &pDue) {
+	mDuckInfo[0].getModel().printState();
+}
 
 
 CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
