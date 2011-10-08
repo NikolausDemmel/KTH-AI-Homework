@@ -9,7 +9,7 @@ all: build
 build: client
 
 client: *.cc *.h
-	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -o client *.cc
+	g++-mp-4.5 --std=gnu++0x $(CXXFLAGS) -g -o client *.cc
 
 run: build
 	./client $(SERVER) $(PORT) $(MODE) $(OPTIONS)
@@ -52,7 +52,7 @@ plot3:
 plot-mat:
 	./plot-matrix.sh "./distances.csv"
 
-#runtest: test
+#runtest: test1
 #	./test	
 
 #test: test.cpp
