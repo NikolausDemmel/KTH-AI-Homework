@@ -34,9 +34,7 @@ void CPlayer::Initialize(const CState &pState)
 
 	mDuckInfo.resize(mNumDucks);
 	for (int i = 0; i < mNumDucks; ++i) {
-		mDuckInfo[i].setDuck(&(mState->GetDuck(i)));
-		mDuckInfo[i].setNumber(i);
-		mDuckInfo[i].setPlayer(this);
+		mDuckInfo[i].initialize(&(mState->GetDuck(i)), i, this, isPractice());
 	}
 }
 
@@ -81,7 +79,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 	int startShooting = 50; // FIXME !!!
 	if(isSingleplayer()) {
-		startShooting = 50; // FIXME !!!!
+		startShooting = 100; // FIXME !!!!
 	}
 
 
@@ -164,10 +162,18 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	}
 	cout << endl;
 
-
-	// FIXME
-	return cDontShoot;
 	return action;
+
+
+//	// FIXME
+//	fstream stream("./B-examples.csv", fstream::out);
+//	stream << std::fixed;
+//	cout << "numbirds: " << mDuckInfo.size() << endl;
+//
+//	for (int i = 0; i < mDuckInfo.size(); ++i) {
+//		if (mDuckInfo[i].missingPattern() != UnknownPattern)
+//		mDuckInfo[i].getModel().write_B_to_stream(stream, patternToString(mDuckInfo[i].getPatterns()));
+//	}
 }
 
 
@@ -177,8 +183,8 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 {
-	for (int i = 1; i < mDuckInfo.size(); ++i) {
-		mDuckInfo[i].getModel().print_warnings();
+	for (int i = 0; i < mDuckInfo.size(); ++i) {
+		mDuckInfo[i].printWarnings();
 	}
 
 	if(isPractice()) {
@@ -190,11 +196,13 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 	cout << "GUESSING" << endl;
 #endif
 
-	mDuckInfo[0].getModel().printState();
-	mDuckInfo[1].getModel().printState();
 
-	mDuckInfo[0].getModel().print_B_split(patternToString(mDuckInfo[0].getPatterns()));
-	mDuckInfo[1].getModel().print_B_split(patternToString(mDuckInfo[1].getPatterns()));
+
+//	mDuckInfo[0].getModel().printState();
+//	mDuckInfo[1].getModel().printState();
+//
+//	mDuckInfo[0].getModel().print_B_split(patternToString(mDuckInfo[0].getPatterns()));
+//	mDuckInfo[1].getModel().print_B_split(patternToString(mDuckInfo[1].getPatterns()));
 //	mDuckInfo[2].getModel().print_B_split(patternToString(mDuckInfo[2].getPatterns()));
 //	mDuckInfo[3].getModel().print_B_split(patternToString(mDuckInfo[3].getPatterns()));
 //	mDuckInfo[4].getModel().print_B_split(patternToString(mDuckInfo[4].getPatterns()));
@@ -227,6 +235,8 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 
 void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 {
+	mDuckInfo[pDuck].setSpecies(pSpecies);
+	// TODO
     std::cout << "HIT DUCK!!!\n";
 }
 
@@ -240,7 +250,8 @@ void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 
 
 void CPlayer::PracticeModeGuess(std::vector<CDuck> &pDucks, const CTime &pDue) {
-	mDuckInfo[0].getModel().printState();
+	cout << "GUESS" << endl;
+	// mDuckInfo[0].getModel().printState();
 }
 
 
@@ -248,34 +259,32 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 {
 	cout << "PRACTICE MODE" << endl;
 
-	HMM<3,DuckObservation::numObservations, DuckObservation> duck_model(DuckObservation::getSplitNames());
-	const CDuck &duck = pState.GetDuck(0);
-	int T = duck.GetSeqLength();
+	Initialize(pState);
 
-#ifdef DEBUG
-	cout << "T = " << T << endl;
-#endif
+	mRound = pState.GetDuck(0).GetSeqLength();
 
-	std::vector<DuckObservation> obs;
-	for (int t = 0; t < T; ++t) {
-		obs.push_back(DuckObservation(duck.GetAction(t)));
-	}
-	duck_model.setObservations(&obs);
-
-	try {
+	try
+	{
 		EnableTimer(pDue);
-		duck_model.learnModel(200, 200, true, false);
+
+		mDuckInfo[0].iteration(mRound);
+		mDuckInfo[0].update();
+
 		DisableTimer();
 	}
-	catch (timeout_exception &e) {
-		cout << e.what() << endl;
+	catch(std::exception &e) {
+		cout << "Exception: " << e.what() << endl;
 	}
 
 #ifdef DEBUG
-	duck_model.printState();
+	mDuckInfo[0].getModel().printState();
+	mDuckInfo[0].getFixedModel().printState();
+
+	cout << "logProb: " << mDuckInfo[0].getModel().sumLogScaleFactors() << endl;
+	cout << "logProbFixed: " << mDuckInfo[0].getFixedModel().sumLogScaleFactors() << endl;
 #endif
 
-	return duck_model.predictNextObs().toAction();
+	return mDuckInfo[0].getModel().predictNextObs().toAction();
 }
 
 

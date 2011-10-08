@@ -25,6 +25,8 @@ namespace ducks {
 
 
 
+
+
 class DuckObservation
 {
 public:

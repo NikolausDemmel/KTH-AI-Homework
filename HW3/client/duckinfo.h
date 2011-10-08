@@ -56,6 +56,7 @@ enum Pattern {
 	UnknownPattern = 4
 };
 
+
 std::string patternToString(Pattern pat);
 
 static const std::list<Pattern> gAllPatterns = { Quacking, Migrating, Panicking, FeigningDeath };
@@ -71,12 +72,14 @@ class DuckInfo
 {
 public:
 	typedef HMM<3,DuckObservation::numObservations, DuckObservation> hmm_t;
+	typedef HMM<4,DuckObservation::numObservations, DuckObservation> hmm_fixed_t;
 
 
 	DuckInfo():
 		mDuck(0),
 		mObs(),
-		mModel(DuckObservation::getSplitNames()),
+		mModel(DuckObservation::getSplitNames()), // FIXME
+		//mModel(),
 		mLastRound(0),
 		mNumUp(0),
 		mNumDown(0),
@@ -87,21 +90,22 @@ public:
 		mRoundOfDeath(-1),
 		mSpecies(SPECIES_UNKNOWN),
 		mPatterns({UnknownPattern, UnknownPattern, UnknownPattern}),
-		mPatternsLastKnown({-1,-1,-1})
+		mPatternsLastKnown({-1,-1,-1}),
+		mFixedModel()
 	{
 	}
 
-	void setDuck(const CDuck *duck) {
+	void initialize(const CDuck *duck, int number, CPlayer *player, bool practiceMode) {
+		mFixedModel.fixedBInitialization(getFullObservationMatrix(), 0, 0.00001);
+		mModel.hardcodedInitialization();
+
 		mModel.setObservations(&mObs);
+		mFixedModel.setObservations(&mObs);
+
 		mDuck = duck;
-	}
-
-	void setNumber(int i) {
-		mNumber = i;
-	}
-
-	void setPlayer(CPlayer *p) {
-		mPlayer = p;
+		mNumber = number;
+		mPlayer = player;
+		mPracticeMode = practiceMode;
 	}
 
 	void notifyBlackBirdFound();
@@ -118,9 +122,7 @@ public:
 	}
 
 	void iteration(int round) {
-//		mAllModels.resize(round);
-//		mAllModels[round-1] = hmm_t::model_t(mModel.getModel());
-		if (!isDead()) {
+		if (!mPracticeMode && !isDead()) {
 			for (int i = mLastRound; i < round; ++i) {
 				int move = mDuck->GetAction(i).GetMovement();
 
@@ -158,19 +160,33 @@ public:
 
 	void update(bool verbose = false)
 	{
-		if (isDead())
+		if (!mPracticeMode && isDead())
 			return;
 
 		int n = mObs.size();
 		for (int i = n; i < mDuck->GetSeqLength(); ++i) {
-			if (mDuck->GetAction(i).GetMovement() & BIRD_DEAD)
+			if (!mPracticeMode && (mDuck->GetAction(i).GetMovement() & BIRD_DEAD))
 				break;
 			mObs.push_back(mDuck->GetAction(i));
 		}
 
-		mModel.learnModel(10, 30, false, verbose);
+		if (mPracticeMode) {
 
-		categorizeDuck();
+			mModel.learnModel(300, 300, true, verbose);
+			mFixedModel.learnModel(300, 300, true, verbose);
+
+		} else {
+
+			// FIXME
+//			mModel.learnModel(10, 30, false, verbose);
+//			mFixedModel.learnModel(10, 30, false, verbose);
+			mModel.learnModel(300, 300, false, verbose);
+			mFixedModel.learnModel(300, 300, false, verbose);
+
+			categorizeDuck();
+
+		}
+
 	}
 
 	Answer hasPattern(Pattern p) {
@@ -274,6 +290,10 @@ public:
 		return mModel;
 	}
 
+	hmm_fixed_t& getFixedModel() {
+		return mFixedModel;
+	}
+
 	static void normalizeDist(std::vector<prob> &dist) {
 		double sum = std::accumulate( dist.begin(), dist.end(), 0.0 );
 		for (auto it = dist.begin(); it != dist.end(); ++it) {
@@ -358,15 +378,6 @@ public:
 		return *bestIter;
 	}
 
-	void analyseDevelopment() {
-//		for (int t = 0; t < mAllModels.size(); ++t) {
-//			hmm_t::model_t m = mAllModels[t];
-//			cout << "t " << t << ", dist " << std::setprecision(15) << mModel.simple_distance(m);
-//			hmm_t hmm(mAllModels[t]);
-//			cout << ", kl dist " << std::setprecision(15) << mModel.distance(hmm) << endl;
-//		}
-	}
-
 	prob currDistance(DuckInfo &other) {
 		//cout <<  "foo: " << std::setprecision(15) << mModel.simple_distance(other.mModel.getModel());
 		return fabs(mModel.kullback_leibler_distance_sample(other.mModel));
@@ -390,16 +401,27 @@ public:
 		}
 	}
 
+	void printWarnings() {
+		mModel.print_warnings();
+		mFixedModel.print_warnings();
+	}
+
+	static hmm_t::state_obs_trans_t getMissingPatternObservationMatrix(Pattern notPattern);
+	static hmm_fixed_t::state_obs_trans_t getFullObservationMatrix();
+
 private:
 
 	CPlayer *mPlayer;
 	const CDuck *mDuck;
 	int mNumber;
 	hmm_t mModel;
+	hmm_fixed_t mFixedModel;
 	std::vector<DuckObservation> mObs;
 	int mLastRound;
 	std::vector<Pattern> mPatterns;
 	std::vector<int> mPatternsLastKnown;
+
+	bool mPracticeMode;
 
 	int mNumUp;
 	int mNumDown;
@@ -409,9 +431,8 @@ private:
 	int mNumHStopped;
 	int mRoundOfDeath;
 
-	ESpecies mSpecies;
 
-	// std::vector<hmm_t::model_t> mAllModels;
+	ESpecies mSpecies;
 };
 
 

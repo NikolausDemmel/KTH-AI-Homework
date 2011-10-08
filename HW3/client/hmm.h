@@ -87,8 +87,7 @@ public:
 		pi(model.pi),
 		mReinitCount(0)
 	{
-		hardcodedInitialization();
-//		standardInitialization();
+		standardInitialization();
 	}
 
 	HMM(const model_t &model_):
@@ -96,7 +95,9 @@ public:
 		A(model.A),
 		B(model.B),
 		pi(model.pi),
-		mReinitCount(0)
+		mReinitCount(0),
+		mAlwaysKeepB(false),
+		mFixedBType(0)
 	{
 	}
 
@@ -109,12 +110,15 @@ public:
 		model(obj.model),
 		A(model.A),  // This is the
 		B(model.B),  // relevant
-		pi(model.pi),// part !
+		pi(model.pi),// part ! -> take our own model!!
+		initial_model(obj.initial_model),
 		obs_names(obj.obs_names),
 		B_split(obj.B_split),
 		T(obj.T),
 		obs(obj.obs), // point to the same observation list
-		mReinitCount(obj.mReinitCount)
+		mReinitCount(obj.mReinitCount),
+		mAlwaysKeepB(obj.mAlwaysKeepB),
+		mFixedBType(obj.mFixedBType)
 	{
 	}
 
@@ -126,6 +130,7 @@ public:
 		gamma = rhs.gamma;
 		bigamma = rhs.bigamma;
 
+		initial_model = rhs.initial_model;
 		model = rhs.model;
 		// dont need to copy A, B and pi !
 
@@ -135,10 +140,54 @@ public:
 		T = rhs.T;
 		obs = rhs.obs; // point the same observation list
 
+		mReinitCount = rhs.mReinitCount;
+		mAlwaysKeepB = rhs.mAlwaysKeepB;
+		mFixedBType = rhs.mFixedBType;
+
 		return *this;
 	}
 
+	void fixedBInitialization(state_obs_trans_t fixedB, int type, double noise = 0.00001) {
+
+		if (N != 4 || M != 9)
+			throw "Wrong dimensions for fixedBInitialization";
+
+		double init_A[4][4] = {
+			0.80, 0.10, 0.05, 0.05,
+			0.05, 0.80, 0.10, 0.05,
+			0.05, 0.05, 0.80, 0.10,
+			0.10, 0.05, 0.05, 0.80
+		};
+
+		A = make_matrix_from_pointer(init_A);
+		B = fixedB;
+		addNoise<N,M>(B,noise);
+
+
+		pi[0] = 1.0/N;
+		pi[1] = 1.0/N;
+		pi[2] = 1.0/N;
+		pi[3] = 1.0/N;
+
+		mAlwaysKeepB = true;
+		mFixedBType = type;
+
+		if(! is_row_stochastic(A))
+			throw "You idiot. Learn to count A...";
+		if(! is_row_stochastic(B))
+			throw "You idiot. Learn to count B...";
+		if(! is_stochastic(pi))
+			throw "You idiot. Learn to count pi...";
+
+		initial_model = model;
+	}
+
+
 	void hardcodedInitialization() {
+
+		if (N != 3 || M != 9)
+			throw "Wrong dimensions for hardcodedInitialization";
+
 		double init_A[3][3] = {
 			0.80, 0.05, 0.15,
 			0.05, 0.70, 0.25,
@@ -146,7 +195,7 @@ public:
 		};
 
 		double init_B[3][9] = {
-			0.13, 0.11, 0.11, 0.11, 0.13, 0.11, 0.12, 0.11, 0.09,
+			0.13, 0.11, 0.11, 0.11, 0.13, 0.11, 0.12, 0.11, 0.07,
 			0.09, 0.10, 0.13, 0.08, 0.12, 0.09, 0.13, 0.14, 0.12,
 			0.09, 0.12, 0.09, 0.13, 0.10, 0.11, 0.11, 0.13, 0.12
 		};
@@ -160,6 +209,8 @@ public:
 
 		if(! (is_row_stochastic(A) && is_row_stochastic(B) && is_stochastic(pi)))
 			throw "You idiot. Learn to count...";
+
+		initial_model = model;
 	}
 
 	void standardInitialization(bool uniform = false) {
@@ -196,6 +247,8 @@ public:
 
 		if(! (is_row_stochastic(A) && is_row_stochastic(B) && is_stochastic(pi)))
 			throw "Messed it up...";
+
+		initial_model = model;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -322,17 +375,19 @@ public:
 		}
 
 		// re-estimate B
-		for (int i = 0; i < N; ++i) {
-			for (int j = 0; j < M; ++j) {
-				prob numer = 0;
-				prob denom = 0;
-				for (int t = 0; t < T-1; ++t) {
-					if ((*obs)[t] == j) {
-						numer += gamma[t][i];
+		if(!mAlwaysKeepB) {
+			for (int i = 0; i < N; ++i) {
+				for (int j = 0; j < M; ++j) {
+					prob numer = 0;
+					prob denom = 0;
+					for (int t = 0; t < T-1; ++t) {
+						if ((*obs)[t] == j) {
+							numer += gamma[t][i];
+						}
+						denom += gamma[t][i];
 					}
-					denom += gamma[t][i];
+					B(i,j) = numer/denom;
 				}
-				B(i,j) = numer/denom;
 			}
 		}
 	}
@@ -409,7 +464,7 @@ public:
 		reestimateModel();
 	}
 
-	void learnModel(int minIters, int maxIters, bool practice_mode, bool verbose = false) {
+	prob learnModel(int minIters, int maxIters, bool practice_mode, bool verbose = false) {
 		T = obs->size();
 		assert(validObservations());
 
@@ -427,7 +482,7 @@ public:
 
 		////////////////
 		// Initialization
-		const int itersToWaitForBestModel = 4;
+		const int itersToWaitForBestModel = 5;
 		//const prob eps = 1e-5; // FIXME: this is arbitrary
 		int iters = 0;
 		prob noise = 0;
@@ -452,9 +507,9 @@ public:
 
 			if (model_has_nan()) {
 				noise = 0;
-				hardcodedInitialization();
+				model = initial_model;
 				++mReinitCount;
-				// cout << "REINIT!" << endl;
+				cout << "REINIT!" << endl;
 			} else {
 				noise = calc_noise(iters, maxIters);
 				addNoiseToModel(noise);
@@ -464,10 +519,6 @@ public:
 
 			// Compute log[P(O|lambda)]
 			logProb = sumLogScaleFactors();
-
-#ifdef DEBUGdd
-			cout << "LogProb delta:" << logProb - oldLogProb << ", " << logProb << ", " << oldLogProb << endl;
-#endif
 
 			++iters;
 
@@ -507,6 +558,8 @@ public:
 		}
 #endif
 
+		return best_log_prob;
+
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -529,7 +582,7 @@ public:
 	}
 
 	prob calc_noise (int iters, int maxNumIters) {
-		const double steepness = 5; // bigger values mean more extreme curve
+		const double steepness = 10; // bigger values mean more extreme curve
 		const double linearfraction = 0.1; // which part of the total iterations should be linear decrease of nosie, before we start exponential
 		const double startingnoise = 0.5; // what noise should we start with
 		const double middlenoise = 0.1; // what noise should we have reached when we switch form linear to exponential
@@ -547,7 +600,9 @@ public:
 	void addNoiseToModel(prob noise = 0.001) {
 		addNoise(pi,noise);
 		addNoise<N,N>(A,noise);
-		addNoise<N,M>(B,noise);
+		if(!mAlwaysKeepB) {
+			addNoise<N,M>(B,noise);
+		}
 	}
 
 	bool model_has_nan() {
@@ -614,6 +669,7 @@ private:
 	vector<state_dist_t> gamma;
 	vector<state_state_trans_t> bigamma;
 
+	model_t initial_model;
 	model_t model;
 
 	state_state_trans_t &A;
@@ -627,6 +683,8 @@ private:
 	std::vector<observation> *obs;
 
 	int mReinitCount;
+	bool mAlwaysKeepB;
+	int mFixedBType;
 
 public:
 	model_t& getModel() {
@@ -753,14 +811,44 @@ public:
 				cout << endl;
 				for (int i = 0; i < N; ++i) {
 					if (prefixes.size() > 0)
-						cout << setw(10) << prefixes[i] << " ";
+						cout << setw(10) << prefixes[i] << ";";
 					for (int j = 0; j < m; ++j) {
-						cout << mat(i,j) << " ";
+						cout << mat(i,j) << ";";
 					}
 					cout << endl;
 				}
 				cout << endl;
 			}
+		}
+	}
+
+	void write_B_to_stream(fstream &stream, const std::vector<string> prefixes = std::vector<string>())
+	{
+		for(int i = 0; i < N; ++i) {
+			if (prefixes.size() > 0)
+				stream << setw(10) << prefixes[i] << ";";
+			for (int j = 0; j < M; ++j)
+				stream << std::setprecision(10) << B(i,j) << ";";
+			stream << endl;
+		}
+	}
+
+	void write_B_split_to_stream(fstream &stream, const std::vector<string> prefixes = std::vector<string>())
+	{
+		if (!B_split.empty()) {
+			for(int n = 0; n < N; ++n) {
+				foreach (matrix<prob> mat, B_split) {
+					int m = mat.size2();
+					if (prefixes.size() > 0)
+						stream << setw(10) << prefixes[n] << ";";
+					for (int j = 0; j < m; ++j) {
+						stream << mat(n,j) << ";";
+					}
+					stream << ";";
+				}
+				stream << endl;
+			}
+			// stream << endl;
 		}
 	}
 

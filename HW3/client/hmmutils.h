@@ -11,6 +11,8 @@
 
 #include "defines.h"
 
+#include <iostream>
+
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -21,6 +23,8 @@ using namespace boost::math;
 
 
 using namespace boost::numeric::ublas;
+using std::cout;
+using std::endl;
 
 
 namespace ducks {
@@ -40,7 +44,7 @@ bool is_stochastic(T &vec) {
 	for (int i = 0; i < vec.size(); ++i) {
 		sum += vec[i];
 	}
-	return abs(sum-1.0) < threshhold;
+	return fabs(sum-1.0) < threshhold;
 }
 
 template<class M>
@@ -49,7 +53,7 @@ bool is_stochastic(matrix_row<M> row) {
 	for (int i = 0; i < row.size(); ++i) {
 		sum += row[i];
 	}
-	return abs(sum-1.0) < threshhold;
+	return fabs(sum-1.0) < threshhold;
 }
 
 template<class T>
@@ -78,7 +82,7 @@ void normalize(matrix_row<M> row) {
 	for (int i = 0; i < row.size(); ++i) {
 		sum += row[i];
 	}
-	if (abs(sum-1.0)>1e-10)
+	if (fabs(sum-1.0)>1e-10)
 		throw "FOOOO normalize sucks...";
 }
 
@@ -96,7 +100,7 @@ void addNoise(V &vec, double noise = 0.001) {
 	for (int i = 0; i < vec.size(); ++i) {
 		sum += vec[i];
 	}
-	if (abs(sum-1.0)>1e-10)
+	if (fabs(sum-1.0)>threshhold)
 		throw "FOOOO normalize sucks...";
 }
 
@@ -113,7 +117,7 @@ void addNoise(matrix_row<M> row, prob noise = 0.001) {
 	for (int i = 0; i < row.size(); ++i) {
 		sum += row[i];
 	}
-	if (abs(sum-1.0)>1e-10)
+	if (fabs(sum-1.0)>threshhold)
 		throw "FOOOO normalize sucks...";
 }
 
@@ -128,7 +132,7 @@ void addNoise(c_matrix<prob,N,M> &mat, prob noise = 0.001) {
 		for (int j = 0; j < mat.size2(); ++j) {
 			sum += mat(i,j);
 		}
-		if (abs(sum-1.0)>1e-10)
+		if (fabs(sum-1.0)>threshhold)
 			throw "FOOOO normalize sucks...";
 	}
 }
@@ -137,7 +141,7 @@ template<int N, class prob>
 prob manhatten_metric(const c_vector<prob,N> &v1, const c_vector<prob,N> &v2) {
 	prob sum = 0;
 	for (int i = 0; i < N; ++i) {
-		sum += abs(v1(i) - v2(i));
+		sum += fabs(v1(i) - v2(i));
 	}
 	return sum;
 }
@@ -147,7 +151,7 @@ prob manhatten_metric(const c_matrix<prob, N, M> &m1, const c_matrix<prob, N, M>
 	prob sum = 0;
 	for (int i = 0; i < N; ++i) {
 		for (int j = 0; j < M; ++j) {
-			sum += abs(m1(i,j) - m2(i,j));
+			sum += fabs(m1(i,j) - m2(i,j));
 		}
 	}
 	return sum;
@@ -157,7 +161,7 @@ template<int N, int M, class prob>
 prob manhattelMetricRow(const c_matrix<prob, N, M> &m1, const c_matrix<prob, N, M> &m2, int row) {
 	prob sum = 0;
 	for (int j = 0; j < M; ++j) {
-		sum += abs(m1(row,j) - m2(row,j));
+		sum += fabs(m1(row,j) - m2(row,j));
 	}
 	return sum;
 }
