@@ -149,6 +149,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 			}
 		}
 
+
 		// MAKE ACTION FOR BEST DUCK TO SHOOT
 		if (bestDuck >= 0) {
 			action = mDuckInfo[bestDuck].makeAction(bestObs);
@@ -159,9 +160,10 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	catch(std::exception &e) {
 		cout << "\t\t\t\t\tException: " << e.what() << endl;
 		mTimeouts++;
+		return action;
 	}
 
-	cout << endl << "Reward info" << endl
+	cout << endl << "Reward info" << endl;
 	PrintRewardInfo();
 	cout << "Current reward of unknown duck: " << mDuckInfo[0].getUnknownReward() << endl;
 	cout << endl;
