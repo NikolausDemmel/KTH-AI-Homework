@@ -81,7 +81,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 		Initialize(pState);
 
 
-	int startShooting = 50; // TODO: find optimal value
+	int startShooting = 30; // TODO: find optimal value
 	if(isSingleplayer()) {
 		startShooting = 100;
 	}
@@ -272,7 +272,7 @@ void CPlayer::FormGroups() {
 		mGroups[sizes[0].second].group = UnknownGroup;
 		for (int i = 1; i < 4; ++i) {
 			if (sizes[i].first <= 10 + sizes[0].first )
-				mGroups[sizes[0].second].group = UnknownGroup;
+				mGroups[sizes[i].second].group = UnknownGroup;
 		}
 	}
 
@@ -541,6 +541,7 @@ void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 	mDuckInfo[pDuck].setSpecies(pSpecies);
 
 	if (pSpecies == SPECIES_BLACK) {
+		std::cout << "FOOOOOOOOO......................... HIT BLACK DUCK!!!\n";
 		std::cout << "FOOOOOOOOO......................... HIT BLACK DUCK!!!\n";
 		mHitBlack = true;
 	}

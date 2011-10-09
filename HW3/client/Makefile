@@ -32,7 +32,7 @@ run-practice-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) practice
 
 test-opt:
-	for i in {1..100} ; do echo $$i 1>&2 && $(MAKE) run-opt | grep "Score" ; done
+	for i in {1..100} ; do echo $$i 1>&2 && $(MAKE) run-opt | tee -a test-games.log | grep "Score" ; done
 
 test-practice-opt:
 	for i in {1..100} ; do echo $$i 1>&2 && $(MAKE) run-practice-opt | grep "wrong" ; done  | wc -l 
