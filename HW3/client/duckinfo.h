@@ -22,7 +22,7 @@ using std::endl;
 namespace ducks {
 
 
-const int cRoundsUnknownDiscardPattern = 30;
+const int cRoundsUnknownDiscardPattern = 20;
 
 const double cWhiteReward = 3;
 const double cColorReward = 5;

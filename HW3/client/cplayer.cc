@@ -167,10 +167,12 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 	cout << endl << "Reward info" << endl;
 	PrintRewardInfo();
-	cout << "Current reward of unknown duck: " << mDuckInfo[0].getUnknownReward() << endl;
+	cout << "Current reward of unknown ducks: " << mDuckInfo[0].getUnknownReward() << endl;
 	cout << endl;
 
-	cout << "Chosen action with expected utility: " << bestReward << endl;
+	cout << "Chosen to shoot duck " << bestDuck << " with expected utility: " << bestReward << endl;
+	cout << "This duck is " << (mDuckInfo[bestDuck].getMissingPatternCertain() ? "probably" : "maybe")
+	     << " missing pattern " << patternToString(mDuckInfo[bestDuck].getMissingPattern()) << endl;
 	action.Print();
 
 	return action;
@@ -500,6 +502,21 @@ void CPlayer::PrintGroupInfo() {
 		cout << setw(10) << mGroups[i].dead_west << ", ";
 	}
 	cout << endl;
+
+	cout << "known colors" << endl;
+	for(int x = -1; x < 6; ++x) {
+		ESpecies s = (ESpecies)x;
+		cout << setw(10) << speciesToString(s);
+		for (int i = 0; i < 5; ++i) {
+			int count = 0;
+			foreach (int n, mGroups[i].dead_ducks) {
+				if (mState->GetDuck(n).GetSpecies() == s)
+					++count;
+			}
+			cout << setw(10) << count << ", ";
+		}
+		cout << endl;
+	}
 }
 
 
@@ -554,7 +571,7 @@ void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 		mHitBlack = true;
 	}
 	else
-		std::cout << "HIT DUCK!!!\n";
+		std::cout << "HIT DUCK!!! Color: " << speciesToString(pSpecies) << endl;
 }
 
 
