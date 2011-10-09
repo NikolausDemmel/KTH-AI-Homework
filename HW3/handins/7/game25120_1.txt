@@ -1,0 +1,79 @@
+INITIALIZATION
+							ROUND: 1
+Too little info. Don't shoot
+							ROUND: 3
+Too little info. Don't shoot
+							ROUND: 5
+Too little info. Don't shoot
+							ROUND: 7
+Too little info. Don't shoot
+							ROUND: 9
+Too little info. Don't shoot
+							ROUND: 11
+Too little info. Don't shoot
+							ROUND: 13
+Too little info. Don't shoot
+							ROUND: 15
+Too little info. Don't shoot
+							ROUND: 17
+Too little info. Don't shoot
+							ROUND: 19
+Too little info. Don't shoot
+							ROUND: 21
+Too little info. Don't shoot
+							ROUND: 23
+Too little info. Don't shoot
+							ROUND: 25
+Too little info. Don't shoot
+							ROUND: 27
+Too little info. Don't shoot
+							ROUND: 29
+Too little info. Don't shoot
+							ROUND: 31
+17 Patterns certainly identified.
+29 Patterns maybe identified.
+Have we identified the black bird? No
+Black bird found count: 0
+            Quacking,  Migrating,  Panicking, FeignDeath,    Unknown, 
+groups total
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:        10,          7,         14,         15,        134, 
+  certain:         2,          2,          5,          8,          0, 
+  balance: -12.40000,   -2.14286,    0.21429,   -1.33333,   -4.73881, 
+  rel-bal:   0.24590,    0.46275,    0.50820,    0.47767,    0.38922, 
+     east:         2,          2,          8,          7,         45, 
+     west:         8,          5,          6,          8,         89, 
+groups alive
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:        10,          7,         14,         15,        134, 
+  certain:         2,          2,          5,          8,          0, 
+  balance: -12.40000,   -2.14286,    0.21429,   -1.33333,   -4.73881, 
+  rel-bal:   0.24590,    0.46275,    0.50820,    0.47767,    0.38922, 
+     east:         2,          2,          8,          7,         45, 
+     west:         8,          5,          6,          8,         89, 
+groups dead
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:         0,          0,          0,          0,          0, 
+  certain:         0,          0,          0,          0,          0, 
+  balance:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+  rel-bal:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+     east:         0,          0,          0,          0,          0, 
+     west:         0,          0,          0,          0,          0, 
+known colors
+   Unknown         0,          0,          0,          0,          0, 
+     White         0,          0,          0,          0,          0, 
+     Black         0,          0,          0,          0,          0, 
+      Blue         0,          0,          0,          0,          0, 
+       Red         0,          0,          0,          0,          0, 
+     Green         0,          0,          0,          0,          0, 
+    Yellow         0,          0,          0,          0,          0, 
+
+Reward info
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+   black#:         0,          0,          0,          0,          0, 
+cld b bk#:        10,          7,         14,         15,        134, 
+best rwrd:-999.00000, -999.00000, -999.00000, -999.00000, -999.00000, 
+ucrt rwrd:-999.00000, -999.00000, -999.00000, -999.00000, -999.00000, 
+Current reward of unknown ducks: 5.00000
+
+Chosen to shoot duck -1 with expected utility: 0.00000
