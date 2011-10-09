@@ -118,11 +118,13 @@ public:
 	}
 
 	bool couldBeBlack() {
+		if ( getGroup() == BlackGroup )
+			return true;
 		if (isBlackBirdFound())
 			return false;
 		else {
-			return (getGroup() == UnknownGroup) &&
-				   !mMigratingLikeWhite;
+			return ((getGroup() == UnknownGroup) &&
+				    !mMigratingLikeWhite);
 		}
 	}
 
@@ -374,7 +376,7 @@ public:
 				double probHit = factor * nextObsDist[obs];
 				expected_rewards[obs] = probHit * getGroupReward(getGroup()) + (1.0 - probHit) * cMissReward;
 				if (!mMissingPatternCertain) {
-					expected_rewards[obs] *= ( this->mLastRound < 100 ? 0.1 : 0.5 ); // early almost only certain birds to be shot!
+					expected_rewards[obs] *= ( this->mLastRound < 100 ? 0.3 : 0.5 );
 				}
 			}
 		}

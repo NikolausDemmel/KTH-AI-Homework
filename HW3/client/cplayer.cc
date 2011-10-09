@@ -25,6 +25,7 @@ void CPlayer::Initialize(const CState &pState)
 #endif
 
 	mBlackFound = false;
+	mBlackFoundCount = 0;
 	mBlackDuckMaybeWronglyIdentified = false;
 	mHitBlack = false;
 	mRound = 0;
@@ -297,7 +298,8 @@ void CPlayer::FormGroups() {
 			// we win anyway, so no need to detect this situation.
 			if (mGroups[mBlackPattern].alive_ducks.size() == 1 &&
 			    mGroups[mBlackPattern].alive_certain == 1) {
-				mDuckInfo[mGroups[mBlackPattern].alive_ducks[0]].setSpecies(SPECIES_BLACK);
+				// mDuckInfo[mGroups[mBlackPattern].alive_ducks[0]].setSpecies(SPECIES_BLACK);
+				mBlackFoundCount += 1;
 				mBlackFound = true;
 			} else {
 				// For now lets not go back here, but instead issue a big fat warning
@@ -305,6 +307,11 @@ void CPlayer::FormGroups() {
 				if (mBlackFound && !mHitBlack) {
 //					cout << " FOOOOO: we thought we know the black duck, but now we don't no more.";
 					mBlackDuckMaybeWronglyIdentified = true;
+					mBlackFoundCount -= 2;
+					if (mBlackFoundCount < 0) {
+						mBlackFound = false;
+						mBlackFoundCount = 0;
+					}
 				}
 			}
 		}
@@ -387,7 +394,8 @@ void CPlayer::PrintRewardInfo() {
 
 void CPlayer::PrintGroupInfo() {
 
-	cout << "Have we identified the black bird? " << mBlackFound << endl;
+	cout << "Have we identified the black bird? " << (mBlackFound ? "Yes" : "No") << endl;
+	cout << "Black bird found count: " << mBlackFoundCount << endl;
 
 	PrintGroupMissingPattern();
 

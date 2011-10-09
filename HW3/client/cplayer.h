@@ -170,6 +170,7 @@ private:
     bool mBlackFound;
     bool mHitBlack;
     bool mBlackDuckMaybeWronglyIdentified;
+	int mBlackFoundCount;
 
     friend class DuckInfo;
 };
