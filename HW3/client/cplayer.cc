@@ -30,6 +30,8 @@ void CPlayer::Initialize(const CState &pState)
 	mState = &pState;
 	mNumDucks = mState->GetNumDucks();
 
+	mTimeouts = 0;
+
 	mGroups.resize(5);
 
 	mDuckInfo.resize(mNumDucks);
@@ -79,7 +81,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 
 	int startShooting = 50; // FIXME !!!
 	if(isSingleplayer()) {
-		startShooting = 100; // FIXME !!!!
+		startShooting = 50; // FIXME !!!!
 	}
 
 
@@ -134,38 +136,19 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	}
 	catch(std::exception &e) {
 		cout << "Exception: " << e.what() << endl;
+		mTimeouts++;
 	}
 
 	cout << "Chosen action with expected utility: " << bestReward << endl;
 	action.Print();
 
-	for (int i = 0; i < 5; ++i) {
-		mGroups[i].clear();
-	}
-	int count = 0;
-	for (int i = 0; i < mDuckInfo.size(); ++i) {
-		if( UnknownPattern != mDuckInfo[i].missingPattern()) {
-			count++;
-		}
-		mGroups[mDuckInfo[i].missingPattern()].push_back(i);
-	}
-	cout << count << " Patterns completely identified." << endl;
+	FormGroups();
 
-	cout << "size of groups";
-	for (int i = 0; i < 5; ++i) {
-		int size = mGroups[i].size();
-		cout << mGroups[i].size() << ", ";
-		if (size == 1 && !mBlackFound) {
-			mDuckInfo[mGroups[i][0]].maybeUpdateSpecies(SPECIES_BLACK);
-			mBlackFound = true;
-		}
-	}
-	cout << endl;
+	// FIXME: Decide
 
 	return action;
 
 
-//	// FIXME
 //	fstream stream("./B-examples.csv", fstream::out);
 //	stream << std::fixed;
 //	cout << "numbirds: " << mDuckInfo.size() << endl;
@@ -176,7 +159,187 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 //	}
 }
 
+void CPlayer::FormGroups() {
+	for (int i = 0; i < 5; ++i) {
+		mGroups[i].clear();
+		mWhitePattern = UnknownPattern;
+		mBlackPattern = UnknownPattern;
+	}
 
+
+	int countCertain = 0;
+	int countKnown = 0;
+	for (int i = 0; i < mDuckInfo.size(); ++i) {
+
+		Pattern pat = mDuckInfo[i].getFixedModelMissingPattern();
+
+		if( mDuckInfo[i].getFixedModelMissingPatternCertain() ) {
+			if (mDuckInfo[i].isDead() ) {
+				mGroups[pat].dead_certain++;
+			} else {
+				mGroups[pat].alive_certain++;
+			}
+			countCertain++;
+		} else if ( pat != UnknownPattern ) {
+			countKnown++;
+		}
+
+		if (mDuckInfo[i].isDead() ) {
+			mGroups[pat].dead_ducks.push_back(i);
+			int balance = mDuckInfo[i].getEastWestBalance();
+			mGroups[pat].dead_east_west_balance += balance;
+			if (balance > 0) {
+				mGroups[pat].dead_east += 1;
+			} else {
+				mGroups[pat].dead_west += 1;
+			}
+		} else {
+			mGroups[pat].alive_ducks.push_back(i);
+			int balance = mDuckInfo[i].getEastWestBalance();
+			mGroups[pat].alive_east_west_balance += balance;
+			if (balance > 0) {
+				mGroups[pat].alive_east += 1;
+			} else {
+				mGroups[pat].alive_west += 1;
+			}
+		}
+
+	}
+	cout << countCertain << " Patterns certainly identified." << endl;
+	cout << countKnown <<   " Patterns maybe identified." << endl;
+
+
+	std::vector<pair<int,Pattern>> sizes;
+	for (int i = 0; i < 4; ++i) {
+		pair<int,Pattern> p(mGroups[i].get_total_count(),(Pattern)i);
+		sizes.push_back(p);
+	}
+	sort(sizes.begin(), sizes.end());
+	cout << "Sorted sizes: ";
+	for (int i = 0; i < 4; ++i) {
+		cout << sizes[i].first << "(" << sizes[i].second << "), ";
+	}
+	cout << endl;
+
+	mGroups[sizes[0].second].group = BlackGroup;
+	mGroups[sizes[1].second].group = ColorGroup;
+	mGroups[sizes[2].second].group = ColorGroup;
+	mGroups[sizes[3].second].group = WhiteGroup;
+
+	if( ! (sizes[0].first < 4 && sizes[1].first > 10) ) {
+		mGroups[sizes[0].second].group = UnknownGroup;
+		for (int i = 1; i < 4; ++i) {
+			if (sizes[i].first <= 10 + sizes[0].first )
+				mGroups[sizes[0].second].group = UnknownGroup;
+		}
+	}
+
+
+	cout << "groups:" << endl;
+	for (int i = 0; i < 5; ++i) {
+		cout << groupToString(mGroups[i].group) << ", ";
+	}
+	cout << endl;
+
+	cout << "size of groups" << endl;
+	cout << setw(10) << "size:";
+	for (int i = 0; i < 5; ++i) {
+		int size = mGroups[i].get_total_count();
+		cout << setw(4) << size << ", ";
+//		if (size == 1 && !mBlackFound) {
+//			if (mGroups[i].alive_ducks.empty() )
+//				mDuckInfo[mGroups[i].[0]].maybeUpdateSpecies(SPECIES_BLACK);
+//			else
+//
+//			mBlackFound = true;
+//		}
+	}
+	cout << endl;
+	cout << setw(10) << "certain:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].get_total_certain() << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "balance:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].get_total_east_west_balance() << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "east:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].get_total_east() << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "west:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].get_total_west() << ", ";
+	}
+	cout << endl;
+	cout << "size of alive groups" << endl;
+	cout << setw(10) << "size:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].alive_ducks.size() << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "certain:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].alive_certain << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "balance:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].alive_east_west_balance << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "east:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].alive_east << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "west:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].alive_west << ", ";
+	}
+	cout << endl;
+	cout << "size of dead groups" << endl;
+	cout << setw(10) << "size:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].dead_ducks.size() << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "certain:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].dead_certain << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "balance:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].dead_east_west_balance << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "east:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].dead_east << ", ";
+	}
+	cout << endl;
+	cout << setw(10) << "west:";
+	for (int i = 0; i < 5; ++i) {
+		cout << setw(4) << mGroups[i].dead_west << ", ";
+	}
+	cout << endl;
+
+
+//	for (int i = 0; i < 5; ++i) {
+//		int size = mGroups[i].alive_ducks.size();
+//
+//		if (size < 10) {
+//			cout << "small group " << i << endl;
+//			foreach( int d, mGroups[i].alive_ducks ) {
+//				mDuckInfo[d].getFixedModel().printA();
+//			}
+//		}
+//	}
+}
 
 
 
@@ -185,6 +348,10 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 {
 	for (int i = 0; i < mDuckInfo.size(); ++i) {
 		mDuckInfo[i].printWarnings();
+	}
+
+	if (mTimeouts > 0) {
+		cout << "[warning] timeouts: " << mTimeouts << endl;
 	}
 
 	if(isPractice()) {

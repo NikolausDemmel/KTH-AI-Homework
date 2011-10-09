@@ -483,7 +483,6 @@ public:
 		////////////////
 		// Initialization
 		const int itersToWaitForBestModel = 5;
-		//const prob eps = 1e-5; // FIXME: this is arbitrary
 		int iters = 0;
 		prob noise = 0;
 		bool abort = false;
@@ -705,9 +704,7 @@ public:
 	// PRINTING AND OTHERS
 	///////////////////////////////////////////////////////////////////////////
 
-	void printState() {
-
-		// print A
+	void printA() {
 		cout << "A:" << endl;
 		for (int i = 0; i < N; ++i) {
 			for (int j = 0; j < N; ++j) {
@@ -715,6 +712,12 @@ public:
 			}
 			cout << endl;
 		}
+
+	}
+
+	void printState() {
+
+		printA();
 
 		// print B
 		cout << endl << "B: " << endl;

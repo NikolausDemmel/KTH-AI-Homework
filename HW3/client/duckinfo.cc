@@ -15,14 +15,14 @@ bool DuckInfo::isBlackBirdFound() {
 double speciesReward(ESpecies spec) {
 	switch(spec) {
 	case SPECIES_WHITE:
-		return WhiteReward;
+		return cWhiteReward;
 	case SPECIES_BLACK:
-		return BlackReward;
+		return cBlackReward;
 	case SPECIES_BLUE:
 	case SPECIES_RED:
 	case SPECIES_YELLOW:
 	case SPECIES_GREEN:
-		return ColorReward;
+		return cColorReward;
 	case SPECIES_UNKNOWN:
 		return UnknownReward;
 	}
@@ -98,6 +98,20 @@ std::string patternToString(Pattern pat) {
 }
 
 
+std::string groupToString(Group group) {
+	switch(group) {
+	case UnknownGroup:
+		return "Unknown group";
+	case ColorGroup:
+		return "Color group";
+	case WhiteGroup:
+		return "White group";
+	case BlackGroup:
+		return "black group";
+	}
+}
+
+
 std::vector<std::string> patternToString(const std::vector<Pattern> &pats) {
 	std::vector<std::string> res;
 	foreach ( Pattern pat, pats ) {
@@ -105,8 +119,6 @@ std::vector<std::string> patternToString(const std::vector<Pattern> &pats) {
 	}
 	return res;
 }
-
-// TODO: use learned full B matrix
 
 // unsmoothed values;
 const double init_real_B[4][9] = {
@@ -161,6 +173,7 @@ DuckInfo::hmm_fixed_t::state_obs_trans_t DuckInfo::getFullObservationMatrix() {
 		}
 	}
 
+// Alternative:
 //	B  = make_matrix_from_pointer(init_real_B);
 
 	return B;
@@ -184,6 +197,102 @@ DuckInfo::hmm_t::state_obs_trans_t DuckInfo::getMissingPatternObservationMatrix(
 	return B;
 
 }
+
+Pattern DuckInfo::filterNewFixedModelMissingPattern(Pattern newPattern) {
+	if (newPattern != UnknownPattern) {
+		mFixedModelMissingPatternLastKnown = mLastRound;
+	}
+
+
+	if (mFixedModelMissingPattern == UnknownPattern)
+		return newPattern;
+	if (newPattern == UnknownPattern) {
+		if (mLastRound - mFixedModelMissingPatternLastKnown > 30) {
+			cout << "Previously known FixedModelMissingPattern unknown for too long. Discaarding. Duck: " << mNumber << endl;
+			return newPattern;
+		}
+		cout << "Previously known FixedModelMissingPattern now unknown. Duck: " << mNumber << endl;
+		return mFixedModelMissingPattern;
+	}
+
+	if (mFixedModelMissingPattern != newPattern) {
+		cout << "changing FixedModelMissingPattern!                   !!" << endl;
+		return newPattern;
+	}
+
+	return newPattern;
+}
+
+void DuckInfo::fixedModelUpdateMissingPattern() {
+
+	mFixedModelMissingPatternCertain = false;
+
+	const hmm_fixed_t::model_t & fixedModel(mFixedModel.getModel());
+	hmm_fixed_t::state_state_trans_t A = fixedModel.A;
+
+	int row = -1;
+	int count = 0;
+	int row2 = -1;
+	int count2 = 0;
+
+	for (int i = 0; i < 4; ++i) {
+		if ( A(i,i) < 0.05 ) {
+			row = i;
+		}
+		if ( A(i,i) > 0.8 ) {
+			++count;
+		}
+		if ( A(i,i) < 0.001 ) {
+			row2 = i;
+		}
+		if ( A(i,i) > 0.65 ) {
+			++count2;
+		}
+	}
+
+	if ((count  == 3 && row  >= 0) ||
+	    (count2 == 3 && row2 >= 0 && count >= 2)) {
+		mFixedModelMissingPatternCertain = true;
+		mFixedModelMissingPattern = filterNewFixedModelMissingPattern((Pattern)row);
+		return;
+	}
+
+	// try again with weaker conditions
+
+	row = -1;
+	count = 0;
+	row2 = -1;
+	count2 = 0;
+
+	for (int i = 0; i < 4; ++i) {
+		if ( A(i,i) < 0.3 ) {
+			row = i;
+		}
+		if ( A(i,i) > 0.7 ) {
+			++count;
+		}
+		if ( A(i,i) < 0.1 ) {
+			row2 = i;
+		}
+		if ( A(i,i) > 0.5 ) {
+			++count2;
+		}
+	}
+
+	if ((count  == 3 && row  >= 0) ||
+	    (count2 == 3 && row2 >= 0)) {
+		mFixedModelMissingPattern = filterNewFixedModelMissingPattern((Pattern)row);
+		return;
+	}
+
+	mFixedModelMissingPattern = filterNewFixedModelMissingPattern(UnknownPattern);
+
+}
+
+Group DuckInfo::getGroup() {
+	return mPlayer->mGroups[mFixedModelMissingPattern].group;
+}
+
 
 
 }

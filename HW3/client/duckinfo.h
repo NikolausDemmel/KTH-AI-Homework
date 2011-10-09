@@ -24,10 +24,10 @@ namespace ducks {
 
 const int cRoundsUnknownDiscardPattern = 50;
 
-const double WhiteReward = 3;
-const double ColorReward = 5;
-const double BlackReward = -300;
-const double MissReward = -1;
+const double cWhiteReward = 3;
+const double cColorReward = 5;
+const double cBlackReward = -300;
+const double cMissReward = -1;
 
 const double UnknownReward = 4; // FIXME
 
@@ -42,10 +42,7 @@ enum Group {
 	UnknownGroup,
 	WhiteGroup,
 	BlackGroup,
-	Color1Group,
-	Color2Group,
-	Color3Group,
-	Color4Group
+	ColorGroup
 };
 
 enum Pattern {
@@ -58,9 +55,11 @@ enum Pattern {
 
 
 std::string patternToString(Pattern pat);
+std::string groupToString(Group group);
 
 static const std::list<Pattern> gAllPatterns = { Quacking, Migrating, Panicking, FeigningDeath };
 std::vector<std::string> patternToString(const std::vector<Pattern> &pats);
+
 
 double speciesReward(ESpecies spec);
 
@@ -89,9 +88,12 @@ public:
 		mNumHStopped(0),
 		mRoundOfDeath(-1),
 		mSpecies(SPECIES_UNKNOWN),
-		mPatterns({UnknownPattern, UnknownPattern, UnknownPattern}),
-		mPatternsLastKnown({-1,-1,-1}),
-		mFixedModel()
+//		mPatterns({UnknownPattern, UnknownPattern, UnknownPattern}),
+//		mPatternsLastKnown({-1,-1,-1}),
+		mFixedModel(),
+		mFixedModelMissingPattern(UnknownPattern),
+		mFixedModelMissingPatternCertain(false),
+		mFixedModelMissingPatternLastKnown(-1)
 	{
 	}
 
@@ -177,11 +179,8 @@ public:
 
 		} else {
 
-			// FIXME
-//			mModel.learnModel(10, 30, false, verbose);
-//			mFixedModel.learnModel(10, 30, false, verbose);
-			mModel.learnModel(300, 300, false, verbose);
-			mFixedModel.learnModel(300, 300, false, verbose);
+			mModel.learnModel(10, 30, false, verbose);
+			mFixedModel.learnModel(10, 30, false, verbose);
 
 			categorizeDuck();
 
@@ -189,102 +188,106 @@ public:
 
 	}
 
-	Answer hasPattern(Pattern p) {
-		bool hasUnknown = false;
-		for (int i = 0; i < 3; ++i) {
-			if (mPatterns[i] == p)
-				return SayYes;
-			if (mPatterns[i] == UnknownPattern)
-				hasUnknown = true;
-		}
-
-		if (hasUnknown)
-			return SayMaybe;
-		else
-			return SayNo;
-
-	}
+//	Answer hasPattern(Pattern p) {
+//		bool hasUnknown = false;
+//		for (int i = 0; i < 3; ++i) {
+//			if (mPatterns[i] == p)
+//				return SayYes;
+//			if (mPatterns[i] == UnknownPattern)
+//				hasUnknown = true;
+//		}
+//
+//		if (hasUnknown)
+//			return SayMaybe;
+//		else
+//			return SayNo;
+//
+//	}
 
 	void categorizeDuck() {
-		mModel.calculate_B_split();
-		auto split = mModel.getBSplit();
-		auto Bh = (*split)[DuckObservation::splitHindex];
-		auto Bv = (*split)[DuckObservation::splitVindex];
+//		if (!mFixedModelMissingPatternCertain)
+			fixedModelUpdateMissingPattern();
 
-		std::vector<prob> vrow(3), hrow(3);
-		std::list<Pattern> allPats(gAllPatterns);
 
-		for (int i = 0; i < 3; ++i) {
-			for (int j = 0; j < 3; ++j) {
-				hrow[j] = Bh(i,j);
-				vrow[j] = Bv(i,j);
-			}
-			Pattern pat = categorizeBrow(hrow, vrow);
-			mPatterns[i] = filterPatternChange(i, mPatterns[i], pat);
-		}
-		removeDoublePatterns();
+//		mModel.calculate_B_split();
+//		auto split = mModel.getBSplit();
+//		auto Bh = (*split)[DuckObservation::splitHindex];
+//		auto Bv = (*split)[DuckObservation::splitVindex];
+//
+//		std::vector<prob> vrow(3), hrow(3);
+//		std::list<Pattern> allPats(gAllPatterns);
+//
+//		for (int i = 0; i < 3; ++i) {
+//			for (int j = 0; j < 3; ++j) {
+//				hrow[j] = Bh(i,j);
+//				vrow[j] = Bv(i,j);
+//			}
+//			Pattern pat = categorizeBrow(hrow, vrow);
+//			mPatterns[i] = filterPatternChange(i, mPatterns[i], pat);
+//		}
+//		removeDoublePatterns();
 	}
 
-	void removeDoublePatterns() {
-		std::list<Pattern> to_remove;
-		for (int i = 0; i < 4; ++i) {
-			Pattern p = static_cast<Pattern>(i);
-			if (std::count(mPatterns.begin(), mPatterns.end(), p) > 1) {
-				to_remove.push_front(p);
-			}
-		}
-		for(auto it = to_remove.begin(); it != to_remove.end(); ++it) {
-			for (int i = 0; i < 3; ++i) {
-				if (mPatterns[i] == (*it)) {
-					mPatterns[i] = UnknownPattern;
-				}
-			}
- 		}
-	}
+//	void removeDoublePatterns() {
+//		std::list<Pattern> to_remove;
+//		for (int i = 0; i < 4; ++i) {
+//			Pattern p = static_cast<Pattern>(i);
+//			if (std::count(mPatterns.begin(), mPatterns.end(), p) > 1) {
+//				to_remove.push_front(p);
+//			}
+//		}
+//		for(auto it = to_remove.begin(); it != to_remove.end(); ++it) {
+//			for (int i = 0; i < 3; ++i) {
+//				if (mPatterns[i] == (*it)) {
+//					mPatterns[i] = UnknownPattern;
+//				}
+//			}
+// 		}
+//	}
 
-	Pattern filterPatternChange(int index, Pattern old, Pattern curr) {
-		if (curr != UnknownPattern) {
-			mPatternsLastKnown[index] = mLastRound;
-		}
+//	Pattern filterPatternChange(int index, Pattern old, Pattern curr) {
+//		if (curr != UnknownPattern) {
+//			mPatternsLastKnown[index] = mLastRound;
+//		}
+//
+//
+//		if (old == UnknownPattern)
+//			return curr;
+//		if (curr == UnknownPattern) {
+//			cout << "Previously known pattern now unknown. Duck: " << mNumber << endl;
+//			if (mLastRound - mPatternsLastKnown[index] > cRoundsUnknownDiscardPattern) {
+//				cout << "Discarding old value, since its too long not known." << endl;
+//				return UnknownPattern;
+//			}
+//			return old;
+//		}
+//		if (old != curr) {
+//			cout << "changing pattern!                                     !" << endl;
+//		}
+//		return curr;
+//	}
 
+//	std::list<Pattern> knownPatterns() {
+//		std::list<Pattern> pats;
+//		for (int i = 0; i < 3; ++i) {
+//			if(mPatterns[i] != UnknownPattern) {
+//				pats.push_back(mPatterns[3]);
+//			}
+//		}
+//		return pats;
+//	}
 
-		if (old == UnknownPattern)
-			return curr;
-		if (curr == UnknownPattern) {
-			cout << "Previously known pattern now unknown. Duck: " << mNumber << endl;
-			if (mLastRound - mPatternsLastKnown[index] > cRoundsUnknownDiscardPattern) {
-				cout << "Discarding old value, since its too long not known." << endl;
-				return UnknownPattern;
-			}
-			return old;
-		}
-		if (old != curr) {
-			cout << "changing pattern!" << endl;
-		}
-		return curr;
-	}
-
-	std::list<Pattern> knownPatterns() {
-		std::list<Pattern> pats;
-		for (int i = 0; i < 3; ++i) {
-			if(mPatterns[i] != UnknownPattern) {
-				pats.push_back(mPatterns[3]);
-			}
-		}
-		return pats;
-	}
-
-	Pattern missingPattern() {
-		std::list<Pattern> patterns(gAllPatterns);
-		for (int i = 0; i < 3; ++i) {
-			patterns.remove(mPatterns[i]);
-		}
-		if(patterns.size() == 1) {
-			return patterns.front();
-		} else {
-			return UnknownPattern;
-		}
-	}
+//	Pattern missingPattern() {
+//		std::list<Pattern> patterns(gAllPatterns);
+//		for (int i = 0; i < 3; ++i) {
+//			patterns.remove(mPatterns[i]);
+//		}
+//		if(patterns.size() == 1) {
+//			return patterns.front();
+//		} else {
+//			return UnknownPattern;
+//		}
+//	}
 
 	hmm_t& getModel() {
 		return mModel;
@@ -366,7 +369,7 @@ public:
 					factor *= 0.5;
 				int obs = DuckObservation::hvToObs(h, v);
 				double probHit = factor * nextObsDist[obs];
-				expected_rewards[obs] = probHit * speciesReward(mSpecies) + (1.0 - probHit) * MissReward;
+				expected_rewards[obs] = probHit * getGroupReward(getGroup()) + (1.0 - probHit) * cMissReward;
 			}
 		}
 
@@ -378,14 +381,14 @@ public:
 		return *bestIter;
 	}
 
-	prob currDistance(DuckInfo &other) {
-		//cout <<  "foo: " << std::setprecision(15) << mModel.simple_distance(other.mModel.getModel());
-		return fabs(mModel.kullback_leibler_distance_sample(other.mModel));
-	}
+//	prob currDistance(DuckInfo &other) {
+//		//cout <<  "foo: " << std::setprecision(15) << mModel.simple_distance(other.mModel.getModel());
+//		return fabs(mModel.kullback_leibler_distance_sample(other.mModel));
+//	}
 
-	const std::vector<Pattern>& getPatterns() {
-		return mPatterns;
-	}
+//	const std::vector<Pattern>& getPatterns() {
+//		return mPatterns;
+//	}
 
 	void setSpecies(ESpecies spec) {
 		mSpecies = spec;
@@ -409,6 +412,36 @@ public:
 	static hmm_t::state_obs_trans_t getMissingPatternObservationMatrix(Pattern notPattern);
 	static hmm_fixed_t::state_obs_trans_t getFullObservationMatrix();
 
+	Pattern filterNewFixedModelMissingPattern(Pattern newPattern);
+	void fixedModelUpdateMissingPattern();
+
+	Pattern getFixedModelMissingPattern() {
+		return mFixedModelMissingPattern;
+	}
+
+	bool getFixedModelMissingPatternCertain() {
+		return mFixedModelMissingPatternCertain;
+	}
+
+	int getEastWestBalance() {
+		return mNumEast - mNumWest;
+	}
+
+	Group getGroup();
+
+	double getGroupReward(Group group) {
+		switch(group) {
+		case UnknownGroup:
+			return 4; // FIXME
+		case WhiteGroup:
+			return cWhiteReward;
+		case BlackGroup:
+			return cBlackReward;
+		case ColorGroup:
+			return cColorReward;
+		}
+	}
+
 private:
 
 	CPlayer *mPlayer;
@@ -416,10 +449,16 @@ private:
 	int mNumber;
 	hmm_t mModel;
 	hmm_fixed_t mFixedModel;
+	Pattern mFixedModelMissingPattern;
+	int mFixedModelMissingPatternLastKnown;
+	bool mFixedModelMissingPatternCertain;
+
+
 	std::vector<DuckObservation> mObs;
 	int mLastRound;
-	std::vector<Pattern> mPatterns;
-	std::vector<int> mPatternsLastKnown;
+
+//	std::vector<Pattern> mPatterns;
+//	std::vector<int> mPatternsLastKnown;
 
 	bool mPracticeMode;
 
