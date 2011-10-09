@@ -12,41 +12,64 @@ namespace ducks
 {
 
 
+enum Direction {
+	Up = 0,
+	Down,
+	East,
+	West,
+	DirectionCount
+};
+
+enum Aliveness {
+	Alive = 0,
+	Dead,
+	AlivenessCount
+};
+
+enum Axis {
+	UpDown = 0,
+	EastWest,
+	AxisCount
+};
+
+
+
+typedef const char * cstring_t;
+
+const Direction cDirections[] = { Up, Down, East, West };
+const cstring_t cDirectionNames[] = { "Up", "Down", "East", "West" };
+
+const Aliveness cAlivenesses[] = { Alive, Dead };
+const cstring_t cAlivenessNames[] = { "Alive", "Dead" };
+
+const Axis cAxes[] = { UpDown, EastWest };
+const cstring_t cAxisNames[] = { "UD", "EW" };
+
+
+
 struct GroupInfo {
 
-	GroupInfo():
-		alive_certain(0),
-		dead_certain(0),
-		alive_east_west_balance(0),
-		dead_east_west_balance(0),
-		alive_west(0),
-		alive_east(0),
-		dead_west(0),
-		dead_east(0),
-		group(UnknownGroup),
-		alive_rel_balance(0),
-		dead_rel_balance(0),
-		best_reward(-999),
-		uncertain_best_reward(-999),
-		black_count(0),
-		could_be_black_count(0)
+	GroupInfo()
 	{
+		clear();
 	}
 
 	void clear() {
-		alive_certain = 0;
-		dead_certain = 0;
-		alive_east_west_balance = 0;
-		dead_east_west_balance = 0;
-		alive_ducks.clear();
-		dead_ducks.clear();
-		alive_west = 0;
-		alive_east = 0;
-		dead_west = 0;
-		dead_east = 0;
+		foreach (Aliveness al, cAlivenesses) {
+			certain_count[al] = 0;
+			ducks[al].clear();
+
+			foreach (Axis ax, cAxes) {
+				direction_balance[al][ax] = 0;
+				direction_rel_balance[al][ax] = 0;
+			}
+
+			foreach (Direction dir, cDirections) {
+				directions[al][dir] = 0;
+			}
+		}
+
 		group = UnknownGroup;
-		alive_rel_balance = 0;
-		dead_rel_balance = 0;
 		best_reward = -999;
 		uncertain_best_reward = -999;
 		black_count = 0;
@@ -54,33 +77,31 @@ struct GroupInfo {
 	}
 
 	int get_total_count() {
-		return alive_ducks.size() + dead_ducks.size();
+		return ducks[Alive].size() + ducks[Dead].size();
 	}
 
 	int get_total_certain() {
-		return alive_certain + dead_certain;
+		return certain_count[Alive] + certain_count[Dead];
 	}
 
-	double get_total_east_west_balance() {
+	double get_total_balance(Axis axis) {
 		if ( get_total_count() == 0 )
 			return 0;
-		return (alive_east_west_balance * alive_ducks.size() + dead_east_west_balance * dead_ducks.size()) /
-				get_total_count();
+		return (direction_balance[Alive][axis] * ducks[Alive].size() +
+				direction_balance[Dead][axis] * ducks[Dead].size()) /
+			   get_total_count();
 	}
 
-	double get_total_rel_balance() {
+	double get_total_rel_balance(Axis axis) {
 		if ( get_total_count() == 0 )
 			return 0;
-		return (alive_rel_balance * alive_ducks.size() + dead_rel_balance * dead_ducks.size()) /
-				get_total_count();
+		return (direction_rel_balance[Alive][axis] * ducks[Alive].size() +
+				direction_rel_balance[Dead][axis] * ducks[Dead].size()) /
+			   get_total_count();
 	}
 
-	int get_total_west() {
-		return alive_west + dead_west;
-	}
-
-	int get_total_east() {
-		return alive_east + dead_east;
+	int get_total_direction(Direction dir) {
+		return directions[Alive][dir] + directions[Dead][dir];
 	}
 
 	void update_best_reward(double curr) {
@@ -91,18 +112,12 @@ struct GroupInfo {
 		uncertain_best_reward = std::max(curr, uncertain_best_reward);
 	}
 
-	int alive_certain;
-	int dead_certain;
-	std::vector<int> alive_ducks;
-	std::vector<int> dead_ducks;
-	double alive_east_west_balance;
-	double dead_east_west_balance;
-	double alive_rel_balance;
-	double dead_rel_balance;
-	int alive_west;
-	int alive_east;
-	int dead_west;
-	int dead_east;
+	int certain_count[AlivenessCount];
+	std::vector<int> ducks[AlivenessCount];
+
+	double direction_balance[AlivenessCount][AxisCount];
+	double direction_rel_balance[AlivenessCount][AxisCount];
+	int directions[AlivenessCount][DirectionCount];
 	Group group;
 
 	double best_reward;

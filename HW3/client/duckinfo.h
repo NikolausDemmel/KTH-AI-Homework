@@ -93,7 +93,8 @@ public:
 		mMissingPattern(UnknownPattern),
 		mMissingPatternCertain(false),
 		mMissingPatternLastKnown(-1),
-		mMigratingLikeWhite(false)
+		mMigratingUnlikeBlack(false),
+		mFeigningDeathUnlikeBlack(false)
 	{
 	}
 
@@ -124,7 +125,7 @@ public:
 			return false;
 		else {
 			return ((getGroup() == UnknownGroup) &&
-				    !mMigratingLikeWhite);
+				    !(mMigratingUnlikeBlack || mFeigningDeathUnlikeBlack));
 		}
 	}
 
@@ -376,7 +377,7 @@ public:
 				double probHit = factor * nextObsDist[obs];
 				expected_rewards[obs] = probHit * getGroupReward(getGroup()) + (1.0 - probHit) * cMissReward;
 				if (!mMissingPatternCertain) {
-					expected_rewards[obs] *= ( this->mLastRound < 100 ? 0.3 : 0.5 );
+					expected_rewards[obs] *= ( this->mLastRound < 100 ? 0.5 : 0.75 );
 				}
 			}
 		}
@@ -443,6 +444,16 @@ public:
 		return mNumEast - mNumWest;
 	}
 
+	int getUpDownBalance() {
+		return mNumUp - mNumDown;
+	}
+
+	double getRelativeUpDownBalance() {
+		if (mNumUp + mNumDown == 0)
+			return 0.5;
+		return ((double)mNumUp) / (mNumUp + mNumDown);
+	}
+
 	double getRelativeEastWestBalance() {
 		if (mNumEast + mNumWest == 0)
 			return 0.5;
@@ -482,7 +493,8 @@ private:
 	int mNumHStopped;
 	int mRoundOfDeath;
 
-	bool mMigratingLikeWhite;
+	bool mMigratingUnlikeBlack;
+	bool mFeigningDeathUnlikeBlack;
 
 	ESpecies mSpecies;
 

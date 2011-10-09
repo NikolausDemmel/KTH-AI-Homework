@@ -311,7 +311,7 @@ double DuckInfo::getUnknownReward() {
 	int white = mPlayer->mGroups[mPlayer->mWhitePattern].get_total_count();
 	int total = mPlayer->mState->GetNumDucks();
 	int white_missing = std::max(0,(total/2)-white);
-	int unknown = mPlayer->mGroups[UnknownPattern].alive_ducks.size();
+	int unknown = mPlayer->mGroups[UnknownPattern].ducks[Alive].size();
 	int color_missing = std::max(0, unknown - white_missing);
 
 	if (white_missing + color_missing <= 0 || unknown == 0) {
