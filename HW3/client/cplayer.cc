@@ -159,6 +159,7 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	}
 	catch(std::exception &e) {
 		cout << "\t\t\t\t\tException: " << e.what() << endl;
+		cerr << "\t\t\t\t\tException: " << e.what() << endl;
 		mTimeouts++;
 		return action;
 	}
@@ -580,6 +581,7 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 		DisableTimer();
 	}
 	catch(std::exception &e) {
+		cerr << "Exception: " << e.what() << endl;
 		cout << "Exception: " << e.what() << endl;
 	}
 

@@ -2,7 +2,7 @@
 SERVER=130.237.218.85
 PORT=12321
 MODE=STANDALONE
-OPTIONS=numbirds=180 numspecies=5 numturns=500 timeperturn=1
+OPTIONS= #numbirds=180 numspecies=5 numturns=500 timeperturn=1
 
 all: build
 
@@ -18,7 +18,7 @@ run-practice: build
 	./client $(SERVER) $(PORT) $(MODE) practice
 
 test-practice:
-	for i in {1..100} ; do $(MAKE) run-practice | grep "good guess"; done | wc -l
+	for i in {1..100} ; do echo $$i 1>&2 && $(MAKE) run-practice | grep "good guess"; done | wc -l
 
 build-opt: client-opt
 
@@ -29,10 +29,10 @@ run-opt: client-opt
 	./client-opt $(SERVER) $(PORT) $(MODE) $(OPTIONS)
 
 run-practice-opt: client-opt
-	./client-opt $(SERVER) $(PORT) $(MODE) practice numturns=1000
+	./client-opt $(SERVER) $(PORT) $(MODE) practice
 
 test-practice-opt:
-	for i in {1..100} ; do $(MAKE) run-practice-opt | grep "wrong" ; done  | wc -l 
+	for i in {1..1000} ; do echo $$i 1>&2 && $(MAKE) run-practice-opt | grep "wrong" ; done  | wc -l 
 
 clean:
 	rm -f client
