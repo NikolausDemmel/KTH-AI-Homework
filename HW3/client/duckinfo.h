@@ -22,14 +22,14 @@ using std::endl;
 namespace ducks {
 
 
-const int cRoundsUnknownDiscardPattern = 50;
+const int cRoundsUnknownDiscardPattern = 30;
 
 const double cWhiteReward = 3;
 const double cColorReward = 5;
 const double cBlackReward = -300;
 const double cMissReward = -1;
 
-const double UnknownReward = 4; // FIXME
+const double cUnknownDefaultReward = 4;
 
 
 enum Answer {
@@ -61,9 +61,9 @@ static const std::list<Pattern> gAllPatterns = { Quacking, Migrating, Panicking,
 std::vector<std::string> patternToString(const std::vector<Pattern> &pats);
 
 
-double speciesReward(ESpecies spec);
-
-Pattern categorizeBrow(std::vector<prob> &BHori, std::vector<prob> &BVert);
+//double speciesReward(ESpecies spec);
+//
+//Pattern categorizeBrow(std::vector<prob> &BHori, std::vector<prob> &BVert);
 
 class CPlayer;
 
@@ -77,8 +77,7 @@ public:
 	DuckInfo():
 		mDuck(0),
 		mObs(),
-		mModel(DuckObservation::getSplitNames()), // FIXME
-		//mModel(),
+		mModel(DuckObservation::getSplitNames()),
 		mLastRound(0),
 		mNumUp(0),
 		mNumDown(0),
@@ -91,9 +90,10 @@ public:
 //		mPatterns({UnknownPattern, UnknownPattern, UnknownPattern}),
 //		mPatternsLastKnown({-1,-1,-1}),
 		mFixedModel(),
-		mFixedModelMissingPattern(UnknownPattern),
-		mFixedModelMissingPatternCertain(false),
-		mFixedModelMissingPatternLastKnown(-1)
+		mMissingPattern(UnknownPattern),
+		mMissingPatternCertain(false),
+		mMissingPatternLastKnown(-1),
+		mMigratingLikeWhite(false)
 	{
 	}
 
@@ -120,7 +120,10 @@ public:
 	bool couldBeBlack() {
 		if (isBlackBirdFound())
 			return false;
-		return false; // FIXME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		else {
+			return (getGroup() == UnknownGroup) &&
+				   !mMigratingLikeWhite;
+		}
 	}
 
 	void iteration(int round) {
@@ -205,7 +208,7 @@ public:
 //	}
 
 	void categorizeDuck() {
-//		if (!mFixedModelMissingPatternCertain)
+//		if (!mMissingPatternCertain)
 			fixedModelUpdateMissingPattern();
 
 
@@ -370,6 +373,9 @@ public:
 				int obs = DuckObservation::hvToObs(h, v);
 				double probHit = factor * nextObsDist[obs];
 				expected_rewards[obs] = probHit * getGroupReward(getGroup()) + (1.0 - probHit) * cMissReward;
+				if (!mMissingPatternCertain) {
+					expected_rewards[obs] *= 0.5;
+				}
 			}
 		}
 
@@ -412,35 +418,39 @@ public:
 	static hmm_t::state_obs_trans_t getMissingPatternObservationMatrix(Pattern notPattern);
 	static hmm_fixed_t::state_obs_trans_t getFullObservationMatrix();
 
-	Pattern filterNewFixedModelMissingPattern(Pattern newPattern);
+	Pattern filterNewMissingPattern(Pattern newPattern);
 	void fixedModelUpdateMissingPattern();
 
-	Pattern getFixedModelMissingPattern() {
-		return mFixedModelMissingPattern;
+	Pattern getMissingPattern() {
+		return mMissingPattern;
 	}
 
-	bool getFixedModelMissingPatternCertain() {
-		return mFixedModelMissingPatternCertain;
+	bool getMissingPatternCertain() {
+		return mMissingPatternCertain;
+	}
+
+	int getLatestAliveRound() {
+		if (isDead()) {
+			return mRoundOfDeath;
+		} else {
+			return mLastRound;
+		}
 	}
 
 	int getEastWestBalance() {
 		return mNumEast - mNumWest;
 	}
 
+	double getRelativeEastWestBalance() {
+		if (mNumEast + mNumWest == 0)
+			return 0.5;
+		return ((double)mNumEast) / (mNumEast + mNumWest);
+	}
+
 	Group getGroup();
 
-	double getGroupReward(Group group) {
-		switch(group) {
-		case UnknownGroup:
-			return 4; // FIXME
-		case WhiteGroup:
-			return cWhiteReward;
-		case BlackGroup:
-			return cBlackReward;
-		case ColorGroup:
-			return cColorReward;
-		}
-	}
+	double getGroupReward(Group group);
+	double getUnknownReward();
 
 private:
 
@@ -449,9 +459,9 @@ private:
 	int mNumber;
 	hmm_t mModel;
 	hmm_fixed_t mFixedModel;
-	Pattern mFixedModelMissingPattern;
-	int mFixedModelMissingPatternLastKnown;
-	bool mFixedModelMissingPatternCertain;
+	Pattern mMissingPattern;
+	int mMissingPatternLastKnown;
+	bool mMissingPatternCertain;
 
 
 	std::vector<DuckObservation> mObs;
@@ -470,8 +480,11 @@ private:
 	int mNumHStopped;
 	int mRoundOfDeath;
 
+	bool mMigratingLikeWhite;
 
 	ESpecies mSpecies;
+
+	friend class CPlayer;
 };
 
 
