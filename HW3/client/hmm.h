@@ -85,6 +85,7 @@ public:
 		A(model.A),
 		B(model.B),
 		pi(model.pi),
+		mAlwaysKeepB(false),
 		mReinitCount(0)
 	{
 		standardInitialization();

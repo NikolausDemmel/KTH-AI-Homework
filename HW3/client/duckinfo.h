@@ -181,7 +181,7 @@ public:
 		if (mPracticeMode) {
 
 			mModel.learnModel(300, 300, true, verbose);
-			mFixedModel.learnModel(300, 300, true, verbose);
+			//mFixedModel.learnModel(300, 300, true, verbose);
 
 		} else {
 

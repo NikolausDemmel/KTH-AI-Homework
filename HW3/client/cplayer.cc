@@ -554,6 +554,10 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 
 void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 {
+	if(isPractice()) {
+		return;
+	}
+
 	try {
 
 	mDuckInfo[pDuck].setSpecies(pSpecies);
@@ -611,11 +615,13 @@ CAction CPlayer::PracticeModeShoot(const CState &pState,const CTime &pDue)
 
 #ifdef DEBUG
 	mDuckInfo[0].getModel().printState();
-	mDuckInfo[0].getFixedModel().printState();
+//	mDuckInfo[0].getFixedModel().printState();
 
 	cout << "logProb: " << mDuckInfo[0].getModel().sumLogScaleFactors() << endl;
-	cout << "logProbFixed: " << mDuckInfo[0].getFixedModel().sumLogScaleFactors() << endl;
+//	cout << "logProbFixed: " << mDuckInfo[0].getFixedModel().sumLogScaleFactors() << endl;
 #endif
+
+	PrintWarnings();
 
 	return mDuckInfo[0].getModel().predictNextObs().toAction();
 }
