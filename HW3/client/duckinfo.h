@@ -375,6 +375,7 @@ public:
 					factor *= 0.5;
 				int obs = DuckObservation::hvToObs(h, v);
 				double probHit = factor * nextObsDist[obs];
+				probHit *= 0.8; // FIXME: how much scale down? This is meant to emphasize hitting well vs max reward
 				expected_rewards[obs] = probHit * getGroupReward(getGroup()) + (1.0 - probHit) * cMissReward;
 				if (!mMissingPatternCertain) {
 					expected_rewards[obs] *= ( this->mLastRound < 100 ? 0.5 : 0.75 );

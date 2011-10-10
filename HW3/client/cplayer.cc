@@ -19,8 +19,8 @@ CPlayer::CPlayer()
 	cout << std::fixed;
 	signal(SIGALRM,timeout_handler);
 
-	} catch (char const * e) {
-		cout << "EXCEPTION (in CPlayer)" << e << endl;
+	} catch (...) {
+		cout << "EXCEPTION (in CPlayer)" << endl;
 	}
 }
 
@@ -91,9 +91,9 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 		Initialize(pState);
 
 
-	int startShooting = 30; // TODO: find optimal value
+	int startShooting = 20; // TODO: find optimal value
 	if(isSingleplayer()) {
-		startShooting = 100;
+		startShooting = 20;
 	}
 
 
@@ -180,8 +180,10 @@ CAction CPlayer::Shoot(const CState &pState,const CTime &pDue)
 	cout << endl;
 
 	cout << "Chosen to shoot duck " << bestDuck << " with expected utility: " << bestReward << endl;
+	if (bestDuck >= 0) {
 	cout << "This duck is " << (mDuckInfo[bestDuck].getMissingPatternCertain() ? "probably" : "maybe")
 	     << " missing pattern " << patternToString(mDuckInfo[bestDuck].getMissingPattern()) << endl;
+	}
 	action.Print();
 
 	return action;
@@ -522,6 +524,11 @@ void CPlayer::PrintWarnings() {
 
 void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 {
+#ifdef DEBUG
+	cout << "GUESSING" << endl;
+	cout.flush();
+#endif
+
 	try {
 
 	PrintWarnings();
@@ -531,9 +538,7 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
 		return;
 	}
 
-#ifdef DEBUG
-	cout << "GUESSING" << endl;
-#endif
+
 
     for(int i=0;i<pDucks.size();i++)
     {
@@ -542,8 +547,8 @@ void CPlayer::Guess(std::vector<CDuck> &pDucks,const CTime &pDue)
          }
     }
 
-	} catch (char const * e) {
-		cout << "EXCEPTION (in Guess)" << e << endl;
+	} catch (...) {
+		cout << "EXCEPTION (in Guess)" << endl;
 	}
 }
 
@@ -561,8 +566,8 @@ void CPlayer::Hit(int pDuck,ESpecies pSpecies)
 	else
 		std::cout << "HIT DUCK!!! Color: " << speciesToString(pSpecies) << endl;
 
-    } catch (char const * e) {
-    	cout << "EXCEPTION (in Hit) " << e << endl;
+    } catch (...) {
+    	cout << " (in Hit) " << endl;
     }
 
 }
