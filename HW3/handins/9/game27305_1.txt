@@ -1,0 +1,81 @@
+INITIALIZATION
+							ROUND: 1
+Too little info. Don't shoot
+							ROUND: 3
+Too little info. Don't shoot
+							ROUND: 5
+Too little info. Don't shoot
+							ROUND: 7
+Too little info. Don't shoot
+							ROUND: 9
+Too little info. Don't shoot
+							ROUND: 11
+Too little info. Don't shoot
+							ROUND: 13
+Too little info. Don't shoot
+							ROUND: 15
+Too little info. Don't shoot
+							ROUND: 17
+Too little info. Don't shoot
+							ROUND: 19
+Too little info. Don't shoot
+							ROUND: 21
+9 Patterns certainly identified.
+17 Patterns maybe identified.
+Have we identified the black bird? No
+Black bird found count: 0
+            Quacking,  Migrating,  Panicking, FeignDeath,    Unknown, 
+groups Alive
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:         7,          7,          9,          3,        154, 
+  certain:         3,          2,          3,          1,          0, 
+   UD-bal:  -7.42857,   -9.42857,   -8.00000,   -3.00000,   -7.80519, 
+ UD-r-bal:   0.20462,    0.20938,    0.21312,    0.34444,    0.26379, 
+   EW-bal:  -1.57143,   -0.57143,   -2.33333,    4.33333,    1.37662, 
+ EW-r-bal:   0.40244,    0.48445,    0.33153,    0.60250,    0.51165, 
+       Up:         1,          1,          1,          1,         33, 
+     Down:         6,          6,          8,          2,        121, 
+     East:         2,          5,          3,          1,         72, 
+     West:         5,          2,          6,          2,         82, 
+groups Dead
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:         0,          0,          0,          0,          0, 
+  certain:         0,          0,          0,          0,          0, 
+   UD-bal:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+ UD-r-bal:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+   EW-bal:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+ EW-r-bal:   0.00000,    0.00000,    0.00000,    0.00000,    0.00000, 
+       Up:         0,          0,          0,          0,          0, 
+     Down:         0,          0,          0,          0,          0, 
+     East:         0,          0,          0,          0,          0, 
+     West:         0,          0,          0,          0,          0, 
+groups total
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+     size:         7,          7,          9,          3,        154, 
+  certain:         3,          2,          3,          1,          0, 
+   UD-bal:  -7.42857,   -9.42857,   -8.00000,   -3.00000,   -7.80519, 
+ UD-r-bal:   0.20462,    0.20938,    0.21312,    0.34444,    0.26379, 
+   EW-bal:  -1.57143,   -0.57143,   -2.33333,    4.33333,    1.37662, 
+ EW-r-bal:   0.40244,    0.48445,    0.33153,    0.60250,    0.51165, 
+       Up:         1,          1,          1,          1,         33, 
+     Down:         6,          6,          8,          2,        121, 
+     East:         2,          5,          3,          1,         72, 
+     West:         5,          2,          6,          2,         82, 
+known colors
+   Unknown         0,          0,          0,          0,          0, 
+     White         0,          0,          0,          0,          0, 
+     Black         0,          0,          0,          0,          0, 
+      Blue         0,          0,          0,          0,          0, 
+       Red         0,          0,          0,          0,          0, 
+     Green         0,          0,          0,          0,          0, 
+    Yellow         0,          0,          0,          0,          0, 
+
+Reward info
+             Unknown,    Unknown,    Unknown,    Unknown,    Unknown, 
+   black#:         0,          0,          0,          0,          0, 
+cld b bk#:         7,          7,          9,          3,        154, 
+best rwrd:-999.00000, -999.00000, -999.00000, -999.00000, -999.00000, 
+ucrt rwrd:-999.00000, -999.00000, -999.00000, -999.00000, -999.00000, 
+Current reward of unknown ducks: 5.00000
+
+Chosen to shoot duck -1 with expected utility: 0.00000
